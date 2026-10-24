@@ -44,25 +44,21 @@
         </div>
       </div>
 
-      <div class="hero-stage reveal delay-1" aria-label="Creative transformation demo">
-        <div class="phone-shell">
+      <div class="hero-stage hero-stage-cta reveal delay-1" aria-label="Choose your Make You Stop path">
+        <div class="phone-shell cta-phone">
           <div class="phone-top"><span></span><span></span><span></span></div>
-          <div class="phone-screen">
-            <div class="demo-badge">BEFORE</div>
-            <p class="demo-before">“Introducing our new hydrating serum…”</p>
-            <div class="swipe-line"><span></span></div>
-            <div class="demo-badge accent">AFTER</div>
-            <p class="demo-after">Your skin isn’t boring.<br>Your opening might be.</p>
-            <div class="demo-card">
-              <div class="demo-orb"></div>
-              <div>
-                <strong>MAKE THEM CURIOUS</strong>
-                <small>Hook → tension → payoff</small>
-              </div>
+          <div class="phone-screen phone-cta-screen">
+            <p class="phone-kicker">READY WHEN YOU ARE</p>
+            <h2>Want content people actually stop for?</h2>
+            <p>Choose where you fit.</p>
+            <div class="phone-cta-buttons">
+              <a href="#brands" class="phone-btn primary">For Brands</a>
+              <a href="#creators" class="phone-btn">For Creators</a>
             </div>
+            <div class="phone-services">Hooks · Videos · Images · Scripts</div>
           </div>
         </div>
-        <div class="floating-note note-a">STOP THE SCROLL</div>
+        <div class="floating-note note-a">MAKE THEM FEEL</div>
         <div class="floating-note note-b">STAY FOR THE PAYOFF</div>
       </div>
     </section>
@@ -79,7 +75,7 @@
         <h2>See how ordinary ideas become content people want to watch.</h2>
       </div>
 
-      <article class="showcase beauty-showcase reveal" aria-label="Beauty and skincare showcase">
+      <article id="brands" class="showcase beauty-showcase reveal" aria-label="Beauty and skincare showcase">
         <div class="showcase-copy">
           <div class="work-label">BEAUTY / SKINCARE · SHOWCASE 01</div>
           <h3>Make them feel the problem before you reveal the solution.</h3>
@@ -93,6 +89,7 @@
           </div>
 
           <p class="showcase-rule">Built to make the viewer <strong>feel something</strong>, <strong>wonder what happens next</strong>, and stay for the reveal.</p>
+          <button class="proof-btn" type="button" data-proof="beauty">Watch Example</button>
         </div>
 
         <div class="showcase-visual">
@@ -124,7 +121,7 @@
       </article>
 
       <div class="work-grid secondary-work-grid">
-        <article class="work-card creator reveal delay-1">
+        <article id="creators" class="work-card creator reveal delay-1">
           <div class="work-label">CREATORS</div>
           <h3>Fresh angles when “what do I post?” hits again.</h3>
           <p>Hooks, scripts and content directions designed to sound natural — not like recycled social media advice.</p>
@@ -132,15 +129,17 @@
             <div>“You don’t need another idea…”</div>
             <div>“…you need a reason to stay past second one.”</div>
           </div>
+          <button class="proof-btn dark" type="button" data-proof="creator">See Hooks</button>
         </article>
 
-        <article class="work-card saas reveal delay-2">
+        <article id="saas" class="work-card saas reveal delay-2">
           <div class="work-label">SAAS / TECH</div>
           <h3>Make the feature matter.</h3>
           <p>Start with the frustration, not the software. Then show the feature as the payoff.</p>
           <div class="flow">
             <span>Problem</span><b>→</b><span>Feature</span><b>→</b><span>Payoff</span>
           </div>
+          <button class="proof-btn dark" type="button" data-proof="saas">Watch Feature Example</button>
         </article>
       </div>
 
@@ -203,10 +202,25 @@
           <a class="btn btn-primary" href="#" data-tally-placeholder>For brands</a>
           <a class="btn btn-ghost light" href="#" data-tally-placeholder>For creators</a>
         </div>
-        <small>Order link coming next — this button will connect directly to your Tally flow.</small>
+
       </div>
     </section>
   </main>
+  <div class="proof-modal" id="proof-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="proof-modal-title">
+    <div class="proof-modal-backdrop" data-close-proof></div>
+    <div class="proof-modal-card">
+      <button class="proof-modal-close" type="button" aria-label="Close example" data-close-proof>×</button>
+      <div class="proof-modal-media" id="proof-modal-media">
+        <div class="proof-placeholder">REAL ENGINE EXAMPLE GOES HERE</div>
+      </div>
+      <div class="proof-modal-copy">
+        <p class="eyebrow" id="proof-modal-kicker">MAKE YOU STOP PROOF</p>
+        <h2 id="proof-modal-title">Example coming next</h2>
+        <p id="proof-modal-text">This space is reserved for a real output from the Make You Stop engine.</p>
+      </div>
+    </div>
+  </div>
+
 
   <footer class="site-footer section-wrap">
     <div>
