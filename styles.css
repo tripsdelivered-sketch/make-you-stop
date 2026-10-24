@@ -131,3 +131,27 @@ body.modal-open{overflow:hidden}
 @media (max-width:950px){.cta-phone{transform:translateY(-12px) rotate(.7deg)}}
 @media (max-width:700px){.proof-modal-card{grid-template-columns:1fr}.proof-modal-media{min-height:390px}.proof-modal-copy{padding:34px 24px}.proof-modal-copy h2{font-size:2.65rem}.cta-phone{transform:none}.phone-cta-screen{min-height:430px;padding:28px}}
 \n\n/* Version 4 — desktop balance + clean niche-card actions */\n@media (min-width:951px){\n  .hero{grid-template-columns:minmax(0,.98fr) minmax(440px,1.02fr);gap:46px;align-items:start;padding-top:76px;min-height:760px}\n  .hero-copy{padding-top:28px}\n  .hero-stage-cta{min-height:620px;justify-content:flex-start;align-items:flex-start;padding-top:0}\n  .hero-stage-cta .phone-shell{width:min(455px,100%)}\n  .hero-stage-cta .cta-phone{transform:translateY(-54px) rotate(1deg)}\n  .hero-stage-cta .note-a{top:16px;left:-10px}\n  .hero-stage-cta .note-b{bottom:118px;right:-8px}\n}\n\n.secondary-work-grid .work-card{display:flex;flex-direction:column;padding-bottom:30px;min-height:410px}\n.secondary-work-grid .work-card>p{margin-bottom:22px}\n.secondary-work-grid .creator-stack,\n.secondary-work-grid .flow{position:static;left:auto;right:auto;bottom:auto;margin-top:auto;margin-bottom:18px}\n.secondary-work-grid .creator-stack{width:100%}\n.secondary-work-grid .flow{width:100%}\n.secondary-work-grid .proof-btn.dark{position:static;left:auto;bottom:auto;align-self:flex-start;margin-top:0}\n\n@media (max-width:950px){\n  .secondary-work-grid .work-card{min-height:360px}\n}\n
+/* Version 6 — commercial layer: packages, FAQ, legal footer */
+.section-intro{max-width:720px;color:var(--muted);font-size:1.05rem;margin-top:14px}
+.package-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+.package-card{position:relative;display:flex;flex-direction:column;min-height:520px;padding:30px;border-radius:28px;background:#fff;border:1px solid rgba(17,17,17,.09);box-shadow:0 20px 50px rgba(17,17,17,.07)}
+.package-card.featured{background:#111116;color:#fff;transform:translateY(-8px);box-shadow:0 28px 70px rgba(17,17,17,.2)}
+.package-badge{position:absolute;top:18px;right:18px;padding:7px 10px;border-radius:999px;background:#ff6548;color:#fff;font-size:.58rem;font-weight:800;letter-spacing:.1em}
+.package-kicker{margin:0 0 18px;color:#f15c45;font-size:.66rem;font-weight:800;letter-spacing:.14em}
+.package-card h3{font-family:Manrope,sans-serif;font-size:clamp(2rem,3vw,3.15rem);line-height:.98;letter-spacing:-.045em;margin:0 0 18px}
+.package-for{margin:0 0 24px;color:#615d62;line-height:1.55}.package-card.featured .package-for{color:rgba(255,255,255,.7)}
+.package-card ul{list-style:none;padding:0;margin:0 0 28px;display:grid;gap:12px}
+.package-card li{position:relative;padding-left:24px;color:#3f3b40;font-size:.94rem}.package-card li:before{content:"✓";position:absolute;left:0;top:-1px;font-weight:900;color:#ef5b45}.package-card.featured li{color:rgba(255,255,255,.82)}
+.package-bottom{margin-top:auto;padding-top:22px;border-top:1px solid rgba(17,17,17,.09)}.package-card.featured .package-bottom{border-color:rgba(255,255,255,.12)}
+.package-price-label{display:block;margin-bottom:14px;font-size:.72rem;color:#777178}.package-card.featured .package-price-label{color:rgba(255,255,255,.52)}
+.btn-package{width:100%;justify-content:center;background:#f1eff0;color:#111}.btn-package.primary{background:#fff;color:#111}
+.pricing-note{max-width:760px;margin:20px auto 0;text-align:center;color:#777178;font-size:.78rem}
+.faq-layout{display:grid;grid-template-columns:minmax(280px,.72fr) minmax(0,1.28fr);gap:70px;align-items:start}
+.faq-list{display:grid;gap:10px}.faq-item{border:1px solid rgba(255,255,255,.13);border-radius:18px;background:rgba(255,255,255,.045);overflow:hidden}
+.faq-item summary{cursor:pointer;list-style:none;padding:20px 54px 20px 20px;font-weight:750;position:relative}.faq-item summary::-webkit-details-marker{display:none}.faq-item summary:after{content:"+";position:absolute;right:20px;top:17px;font-size:1.4rem;color:#ff765d}.faq-item[open] summary:after{content:"–"}
+.faq-item p{margin:0;padding:0 20px 22px;color:rgba(255,255,255,.66);line-height:1.6;font-size:.92rem}
+.site-footer{gap:24px}.footer-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px}.footer-links a{text-decoration:none}
+@media(max-width:950px){.package-grid{grid-template-columns:1fr}.package-card.featured{transform:none}.package-card{min-height:auto}.faq-layout{grid-template-columns:1fr;gap:24px}.footer-links{justify-content:flex-start}}
+
+/* Legal pages */
+.legal-body{background:#f5f2f3;color:#111}.legal-wrap{width:min(820px,calc(100% - 40px));margin:0 auto;padding:70px 0 100px}.legal-back{display:inline-block;margin-bottom:42px;color:#111;font-weight:800;text-decoration:none}.legal-wrap h1{font-family:Manrope,sans-serif;font-size:clamp(3rem,8vw,6rem);line-height:.95;letter-spacing:-.06em;margin:8px 0 18px}.legal-note{padding:14px 16px;border-radius:14px;background:#fff0ec;color:#6d4a43;font-size:.88rem}.legal-wrap section{padding:26px 0;border-bottom:1px solid rgba(17,17,17,.1)}.legal-wrap section h2{font-family:Manrope,sans-serif;font-size:1.35rem;margin:0 0 10px}.legal-wrap section p{margin:0;color:#5e595f;line-height:1.7}.legal-wrap a{color:#111}
