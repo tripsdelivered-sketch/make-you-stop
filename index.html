@@ -213,8 +213,6 @@
 <p>Checkout will be connected after Stripe and order intake are wired.</p>
 </div>
 </aside>
-
-
 <script>
 (function(){
   async function submitProtectedForm(form, formType) {
@@ -288,5 +286,25 @@
     submitProtectedForm(support, 'order_support');
   });
 })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const supportToggle = document.getElementById('toggleSupportForm');
+  const supportForm = document.getElementById('orderSupportForm');
+
+  if (supportToggle && supportForm) {
+    supportToggle.addEventListener('click', function () {
+      const isOpen = supportToggle.getAttribute('aria-expanded') === 'true';
+
+      supportToggle.setAttribute('aria-expanded', String(!isOpen));
+      supportForm.hidden = isOpen;
+      supportForm.setAttribute('aria-hidden', String(isOpen));
+      supportToggle.textContent = isOpen
+        ? 'Submit a review request'
+        : 'Hide review form';
+    });
+  }
+});
 </script>
 </body></html>
