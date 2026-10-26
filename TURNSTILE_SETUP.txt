@@ -1,0 +1,34 @@
+MAKE YOU STOP — TURNSTILE + FORM IMPLEMENTATION
+
+This package is based on locked storefront Preview 31.
+Preview 31 itself is unchanged.
+
+WHAT IS ALREADY PREPARED
+- Turnstile widget locations on Custom Quote and Order Support forms
+- secure same-origin POST to /api/submit
+- Cloudflare Pages Function at functions/api/submit.js
+- mandatory server-side Turnstile verification
+- form type validation and basic field length limits
+- forwarding of verified submissions to one Make webhook
+- customer-facing success/error messages
+- fail-closed behaviour if secrets/webhook are missing
+
+BEFORE DEPLOYMENT
+1. Production Turnstile Site Key is already inserted in index.html.
+2. In Cloudflare Pages project > Settings > Variables and Secrets, add:
+   TURNSTILE_SECRET_KEY   [Secret / encrypted]
+   TURNSTILE_HOSTNAME     [Variable, e.g. makeyoustop.com]
+   MAKE_FORM_WEBHOOK_URL  [Secret / encrypted]
+   FORM_FORWARD_SECRET    [Optional secret]
+3. Deploy the package with the /functions directory at the project root.
+4. In Make, the single webhook can route on form_type:
+   custom_quote
+   order_support
+
+DO NOT
+- put TURNSTILE_SECRET_KEY in index.html or browser JavaScript
+- go live using Cloudflare test keys
+- process a form without server-side Siteverify validation
+
+TESTING
+Cloudflare provides official test credentials. Use them only in a non-production test deployment.
