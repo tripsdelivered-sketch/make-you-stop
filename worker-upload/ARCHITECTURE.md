@@ -243,7 +243,7 @@ Authenticated. Returns canonical job context, durable order context and the late
 
 `GET /api/jobs/ready`
 
-Authenticated. Returns production-ready jobs ordered by order and sequence. This provides a clean boundary for Make to consume canonical Cloudflare job context rather than reconstructing order/job relationships from Tally fields.
+Authenticated. Returns production-ready jobs ordered by order and sequence. This provides a clean boundary for Make to consume canonical Cloudflare job context rather than reconstructing order/job relationships from Tally fields. The queue can now be narrowed with `product_key` and `requested_lane` query parameters, in addition to the existing `role` and `component_type` filters, so a lane-specific Make scenario can consume only its own jobs.
 
 When a normalized job is durably stored through `POST /api/deliverables/complete` or `POST /api/components`, the Worker now marks the matching `job_context.status` as `complete`. This prevents completed normalized jobs from remaining in the production-ready queue and being repeatedly picked up by Make.
 
