@@ -258,3 +258,12 @@ During migration:
 5. Route new Storyboard, Storyboard + Showcase and Unboxing lanes only after their Make contracts are built.
 6. Customer-facing **What to Say Guide** remains written-only. It may be purchased standalone as one counted primary deliverable, or included inside another product as a non-counting supporting component. No customer AI voice/audio is sold. The existing separate Suggested Voice Script scenario is retained as the legacy implementation to be normalised later.
 7. Do not expose raw order IDs, job IDs, Stripe Checkout IDs, D1 identifiers or R2 keys in customer-facing intake URLs.
+
+## Storyboard commercial contracts
+
+The active product manifests distinguish two paid products and their exact launch promises:
+
+- `storyboard` / **Storyboard Pack** — USD 19. One counted primary deliverable. Produces 2 storyboard directions, each with hook + emotional angle, a 5-stage story flow, shot/visual direction, payoff + CTA, and simple filming notes. No showcase frames are included.
+- `storyboard_showcase` / **Storyboard + Showcase** — USD 29. One counted primary deliverable with required non-counting `storyboard` and `showcase` components. Produces the same 2 storyboard directions, selects the strongest direction, then creates 3–5 showcase frames mapped to meaningful story beats, plus camera/shot guidance, phone filming/framing tips, and payoff + CTA direction.
+
+For Storyboard + Showcase, storyboard and showcase components do not increment `expected_deliverables`; the purchase counts once. The Showcase is downstream of the Storyboard intelligence and must reuse the selected strongest direction rather than generating an unrelated concept.
