@@ -1,3 +1,5 @@
+import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
+
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
 const RETURN_BASE = "https://make-you-stop-upload.tripsdelivered.workers.dev";
@@ -732,6 +734,25 @@ export default {
 
       if (request.method === "POST" && path === "/api/download-tokens") {
         return createDownloadToken(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/upload-sessions") {
+        return createUploadSession(request, env);
+      }
+
+      const assetsMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/assets$/);
+      if (request.method === "GET" && assetsMatch) {
+        return orderAssets(request, env, assetsMatch[1]);
+      }
+
+      const customerUploadFileMatch = path.match(/^\/customer-upload\/([^/]+)\/file$/);
+      if (request.method === "PUT" && customerUploadFileMatch) {
+        return uploadFile(request, env, customerUploadFileMatch[1]);
+      }
+
+      const customerUploadMatch = path.match(/^\/customer-upload\/([^/]+)$/);
+      if (request.method === "GET" && customerUploadMatch) {
+        return uploadPage(env, customerUploadMatch[1]);
       }
 
       const returnMatch = path.match(/^\/return\/([^/]+)$/);
