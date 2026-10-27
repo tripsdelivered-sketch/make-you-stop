@@ -200,15 +200,63 @@ async function tableColumns(env, table) {
   return new Set((result.results || []).map((r) => r.name));
 }
 
+function extractStripePurchaseKeys(body) {
+  const keys = [];
+
+  function add(kind, value) {
+    if (typeof value === "string" && value.length > 0 && value.length <= 300) {
+      keys.push(`${kind}:${value}`);
+    }
+  }
+
+  add("price", body?.stripe_price_id);
+  add("product", body?.stripe_product_id);
+  add("payment_link", body?.payment_link_id);
+  add("payment_link", body?.stripe_payment_link_id);
+
+  const session = body?.checkout_session && typeof body.checkout_session === "object"
+    ? body.checkout_session
+    : body?.session && typeof body.session === "object"
+      ? body.session
+      : null;
+
+  if (session) add("payment_link", session.payment_link);
+
+  const lineItems =
+    body?.stripe_line_items ??
+    body?.line_items ??
+    session?.line_items ??
+    null;
+
+  const data = Array.isArray(lineItems)
+    ? lineItems
+    : Array.isArray(lineItems?.data)
+      ? lineItems.data
+      : [];
+
+  for (const item of data) {
+    if (!item || typeof item !== "object") continue;
+    const price = item.price;
+    if (typeof price === "string") {
+      add("price", price);
+      continue;
+    }
+    if (price && typeof price === "object") {
+      add("price", price.id);
+      const product = price.product;
+      if (typeof product === "string") add("product", product);
+      else if (product && typeof product === "object") add("product", product.id);
+    }
+  }
+
+  return [...new Set(keys)];
+}
+
 async function resolveManifest(env, body) {
   let productKey = safeId(body?.product_key) ? body.product_key : null;
 
   if (!productKey) {
-    const candidates = [
-      body?.stripe_price_id ? `price:${body.stripe_price_id}` : null,
-      body?.stripe_product_id ? `product:${body.stripe_product_id}` : null,
-      body?.payment_link_id ? `payment_link:${body.payment_link_id}` : null
-    ].filter(Boolean);
+    const candidates = extractStripePurchaseKeys(body);
 
     for (const mappingKey of candidates) {
       const mapping = await env.DB.prepare(
