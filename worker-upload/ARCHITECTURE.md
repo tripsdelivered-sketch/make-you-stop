@@ -160,12 +160,17 @@ Seeded canonical product keys:
 - `hooks`
 - `image_words`
 - `video_reel`
+- `what_to_say_guide`
 - `storyboard`
 - `storyboard_showcase`
 - `guide_ebook`
 - `unboxing_product_reveal`
 
-`video_reel` also defines a non-counting `suggested_voice_script` support job. `storyboard_showcase` remains one counted purchased deliverable and records Storyboard + Showcase as required components at the manifest level.
+`what_to_say_guide` is a standalone counted product for written natural communication guidance: what to say, how to say it naturally, scene/image talking cues, delivery/tone guidance, payoff/CTA and estimated speaking time where relevant. It is written guidance only and does not sell or generate customer audio.
+
+`video_reel` currently retains the legacy non-counting `suggested_voice_script` support job for compatibility. That legacy support capability is the predecessor/alias of the customer-facing **What to Say Guide** and can later be normalised to the same component contract when the separate Make scenario is integrated. When included inside another purchased product it remains non-counting; when purchased as `what_to_say_guide` it is one primary counted deliverable.
+
+`storyboard_showcase` remains one counted purchased deliverable and records Storyboard + Showcase as required components at the manifest level.
 
 Bundle/package products are intentionally not guessed or auto-seeded until their exact purchased contents are approved.
 
@@ -249,5 +254,5 @@ During migration:
 3. Keep the Hooks-only Stripe values as fallback until generalized product resolution is verified.
 4. Configure Stripe product/price mappings before removing fallback behavior.
 5. Route new Storyboard, Storyboard + Showcase and Unboxing lanes only after their Make contracts are built.
-6. Suggested Voice Script remains written-only, separate-scenario orchestration and non-counting.
+6. Customer-facing **What to Say Guide** remains written-only. It may be purchased standalone as one counted primary deliverable, or included inside another product as a non-counting supporting component. No customer AI voice/audio is sold. The existing separate Suggested Voice Script scenario is retained as the legacy implementation to be normalised later.
 7. Do not expose raw order IDs, job IDs, Stripe Checkout IDs, D1 identifiers or R2 keys in customer-facing intake URLs.
