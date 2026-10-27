@@ -185,7 +185,7 @@ The orchestration module lazily creates:
 - `intake_submissions`
 - `stripe_ingress_events`
 
-`job_context` extends the existing jobs model with stable orchestration metadata including primary/support role, counted/non-counting status, parent job, lane, sequence, delivery order and manifest version. It also mirrors compatible fields into the existing `jobs` table where those columns exist.
+`job_context` extends the existing jobs model with stable orchestration metadata including primary/support role, counted/non-counting status, parent job, canonical `deliverable_id`, lane, sequence, delivery order and manifest version. Primary jobs receive a deterministic deliverable ID. Support jobs inherit the canonical parent deliverable ID so `/api/components` can attach support output to the correct purchased deliverable without Make inventing IDs. Compatible fields are also mirrored into the existing `jobs` table where those columns exist.
 
 ### Product resolution
 
