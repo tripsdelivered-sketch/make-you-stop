@@ -245,6 +245,8 @@ Authenticated. Returns canonical job context, durable order context and the late
 
 Authenticated. Returns production-ready jobs ordered by order and sequence. This provides a clean boundary for Make to consume canonical Cloudflare job context rather than reconstructing order/job relationships from Tally fields.
 
+When a normalized job is durably stored through `POST /api/deliverables/complete` or `POST /api/components`, the Worker now marks the matching `job_context.status` as `complete`. This prevents completed normalized jobs from remaining in the production-ready queue and being repeatedly picked up by Make.
+
 ### Migration safety
 
 During migration:
