@@ -147,3 +147,107 @@ Every new backend capability is additive:
 `proven Make creative lane -> optional presentation/asset service -> R2/D1 -> final delivery`
 
 Do not insert Canva, visual-memory calls, or other backend services into the middle of a proven creative/render spine until a parallel test has passed.
+
+
+## Commerce, product manifests and intake orchestration
+
+The Worker now contains an additive orchestration contract for paid products. It does **not** replace Make's creative intelligence or any proven creative/render lane.
+
+### Core product manifests
+
+Seeded canonical product keys:
+
+- `hooks`
+- `image_words`
+- `video_reel`
+- `storyboard`
+- `storyboard_showcase`
+- `guide_ebook`
+- `unboxing_product_reveal`
+
+`video_reel` also defines a non-counting `suggested_voice_script` support job. `storyboard_showcase` remains one counted purchased deliverable and records Storyboard + Showcase as required components at the manifest level.
+
+Bundle/package products are intentionally not guessed or auto-seeded until their exact purchased contents are approved.
+
+### New D1 support tables
+
+The orchestration module lazily creates:
+
+- `product_manifests`
+- `stripe_product_mappings`
+- `job_context`
+- `intake_tokens`
+- `intake_submissions`
+- `stripe_ingress_events`
+
+`job_context` extends the existing jobs model with stable orchestration metadata including primary/support role, counted/non-counting status, parent job, lane, sequence, delivery order and manifest version. It also mirrors compatible fields into the existing `jobs` table where those columns exist.
+
+### Product resolution
+
+`POST /api/products/resolve`
+
+Authenticated. Resolves an active product manifest from either:
+
+- an explicit staged-migration `product_key`; or
+- a configured Stripe price/product/payment-link mapping.
+
+`POST /api/product-mappings`
+
+Authenticated. Registers one Stripe price, product or payment-link ID against a canonical product key. Stripe remains the purchase identifier; Cloudflare/D1 owns the operational manifest.
+
+### Order expansion
+
+`POST /api/orders/{order_id}/expand`
+
+Authenticated. Expands an existing paid order into deterministic primary/support jobs from the canonical manifest.
+
+Properties:
+
+- deterministic job IDs;
+- parent/support relationships;
+- one counted primary deliverable for single products;
+- non-counting Script support job for Video/Reel;
+- sequence and delivery order;
+- manifest version;
+- retry-safe upserts;
+- updates `orders.expected_deliverables`;
+- writes `expected_manifest_json` when that column exists;
+- optional Stripe event recording for idempotency history.
+
+The current Hooks-only Stripe ingress may remain as a compatibility path until this generalized contract is connected and validated.
+
+### Secure intake tokens
+
+`POST /api/intake-tokens`
+
+Authenticated. Creates an opaque, expiring token tied to an order and optionally one job. Raw internal order/job/Stripe identifiers do not need to appear in a public Tally URL.
+
+`GET /api/intake-tokens/{opaque_token}`
+
+Authenticated backend resolution for orchestration/debugging.
+
+`POST /intake/{opaque_token}`
+
+Token-authorized intake submission endpoint. Stores the intake payload, consumes the token and marks the relevant canonical job context production-ready. Support jobs using the parent intake become production-ready with the parent.
+
+### Production-ready job context
+
+`GET /api/jobs/{job_id}/context`
+
+Authenticated. Returns canonical job context, durable order context and the latest applicable stored intake.
+
+`GET /api/jobs/ready`
+
+Authenticated. Returns production-ready jobs ordered by order and sequence. This provides a clean boundary for Make to consume canonical Cloudflare job context rather than reconstructing order/job relationships from Tally fields.
+
+### Migration safety
+
+During migration:
+
+1. Keep proven creative/render lanes unchanged.
+2. Keep existing lane emails active.
+3. Keep the Hooks-only Stripe values as fallback until generalized product resolution is verified.
+4. Configure Stripe product/price mappings before removing fallback behavior.
+5. Route new Storyboard, Storyboard + Showcase and Unboxing lanes only after their Make contracts are built.
+6. Suggested Voice Script remains written-only, separate-scenario orchestration and non-counting.
+7. Do not expose raw order IDs, job IDs, Stripe Checkout IDs, D1 identifiers or R2 keys in customer-facing intake URLs.
