@@ -74,6 +74,14 @@ const CORE_MANIFESTS = [
     ]
   },
   {
+    product_key: "what_to_say_guide",
+    display_name: "What to Say Guide",
+    manifest_version: 1,
+    jobs: [
+      { job_key: "what_to_say_guide", role: "primary", deliverable_type: "what_to_say_guide", requested_lane: "what_to_say_guide", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
+    ]
+  },
+  {
     product_key: "storyboard",
     display_name: "Storyboard",
     manifest_version: 1,
