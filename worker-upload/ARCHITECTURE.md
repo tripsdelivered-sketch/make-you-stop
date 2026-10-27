@@ -95,3 +95,55 @@ The final email should be sent only when the manifest reports:
 - `delivery_email_sent_at` is blank
 
 The final email can then contain every purchased output plus non-counting supporting components.
+
+
+## Canva production bridge
+
+Canva is an optional downstream production/presentation service. It does not replace or modify Make's creative intelligence or proven render lanes.
+
+Worker routes are authenticated with the existing backend Authorization connection except for Canva's OAuth callback:
+
+- `GET /api/canva/status`
+- `POST /api/canva/auth/start`
+- `GET /canva/oauth/callback`
+- `POST /api/canva/designs`
+- `GET /api/canva/brand-templates`
+- `GET /api/canva/brand-templates/{id}/dataset`
+- `POST /api/canva/autofills`
+- `POST /api/canva/exports`
+- `GET /api/canva/exports/{id}`
+
+The OAuth flow uses PKCE. Access and refresh tokens are encrypted before D1 storage using AES-GCM with a key derived from the existing Worker backend secret. Canva app credentials themselves must be configured as Cloudflare Worker secrets:
+
+- `CANVA_CLIENT_ID`
+- `CANVA_CLIENT_SECRET`
+
+No Make lane is connected to Canva automatically. This lets Storyboard, Showcase, Image/Words or other presentation steps adopt Canva one at a time after their existing successful output point.
+
+Canva use should prioritise polished branded presentation, brand-template autofill, design creation and export. Existing Creatomate/video generation paths remain authoritative until a replacement is separately proven.
+
+## Visual memory / anti-repeat layer
+
+Cloudflare can remember visual assets independently of Make and rank reusable assets without repeatedly selecting the same image.
+
+D1 tables:
+
+- `visual_assets`
+- `visual_usage`
+
+Authenticated Worker routes:
+
+- `POST /api/visuals` registers customer-supplied, generated, licensed, Canva or partner imagery and its metadata.
+- `POST /api/visuals/used` records an actual scene/slide use.
+- `GET /api/visuals/candidates?brand_id=...` returns allowed candidates using an unused-first, then least-used, then least-recent policy.
+- `GET /api/visuals/recent-usage?brand_id=...` exposes recent usage to the creative engine for anti-repeat decisions.
+
+The first version deliberately handles exact asset reuse rather than claiming perceptual similarity. A later vision/embedding layer can add near-duplicate composition detection without changing Make's creative contracts.
+
+## Safe adoption rule
+
+Every new backend capability is additive:
+
+`proven Make creative lane -> optional presentation/asset service -> R2/D1 -> final delivery`
+
+Do not insert Canva, visual-memory calls, or other backend services into the middle of a proven creative/render spine until a parallel test has passed.
