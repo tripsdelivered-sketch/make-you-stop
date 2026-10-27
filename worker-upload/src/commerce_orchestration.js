@@ -298,10 +298,16 @@ export async function resolveProduct(request, env) {
 
   const resolved = await resolveManifest(env, body);
   if (!resolved) {
-    return json({ success: false, error: "No active product manifest matches this purchase" }, 404);
+    return json({
+      success: true,
+      resolved: false,
+      migration_fallback_allowed: true,
+      purchase_keys: extractStripePurchaseKeys(body),
+      message: "No active Stripe-to-product mapping exists yet. Preserve the current Make fallback during staged migration."
+    });
   }
 
-  return json({ success: true, ...resolved });
+  return json({ success: true, resolved: true, ...resolved });
 }
 
 export async function upsertStripeProductMapping(request, env) {
