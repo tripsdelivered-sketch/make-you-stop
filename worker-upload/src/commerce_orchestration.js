@@ -83,8 +83,25 @@ const CORE_MANIFESTS = [
   },
   {
     product_key: "storyboard",
-    display_name: "Storyboard",
-    manifest_version: 1,
+    display_name: "Storyboard Pack",
+    manifest_version: 2,
+    offer_contract: {
+      currency: "USD",
+      price: 19,
+      promise: "Turn one idea into two possible social story directions before you film.",
+      customer_outcome: "See two clear ways to turn the idea into content before filming.",
+      deliverables: [
+        "2 storyboard directions",
+        "Hook + emotional angle",
+        "5-stage story flow for each",
+        "Shot / visual direction",
+        "Payoff + CTA",
+        "Simple filming notes"
+      ],
+      storyboard_direction_count: 2,
+      stages_per_direction: 5,
+      includes_showcase_frames: false
+    },
     jobs: [
       { job_key: "storyboard", role: "primary", deliverable_type: "storyboard", requested_lane: "storyboard", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -92,8 +109,32 @@ const CORE_MANIFESTS = [
   {
     product_key: "storyboard_showcase",
     display_name: "Storyboard + Showcase",
-    manifest_version: 1,
+    manifest_version: 2,
     required_components: ["storyboard", "showcase"],
+    offer_contract: {
+      currency: "USD",
+      price: 29,
+      promise: "Plan the story and see the strongest beats visually before filming.",
+      customer_outcome: "See how the selected story direction could actually be filmed.",
+      deliverables: [
+        "2 storyboard directions",
+        "Selected strongest direction",
+        "3–5 showcase frames",
+        "Camera / shot guide",
+        "Phone filming + framing tips",
+        "Payoff + CTA direction"
+      ],
+      storyboard_direction_count: 2,
+      select_strongest_direction: true,
+      showcase_frame_min: 3,
+      showcase_frame_max: 5,
+      showcase_frames_must_map_to_story_beats: true,
+      one_counted_primary_deliverable: true,
+      component_counting: {
+        storyboard: false,
+        showcase: false
+      }
+    },
     jobs: [
       { job_key: "storyboard_showcase", role: "primary", deliverable_type: "storyboard_showcase", requested_lane: "storyboard_showcase", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -197,9 +238,26 @@ async function ensureTables(env) {
 
   for (const manifest of CORE_MANIFESTS) {
     await env.DB.prepare(`
-      INSERT OR IGNORE INTO product_manifests (
+      INSERT INTO product_manifests (
         product_key, display_name, manifest_version, manifest_json, active, created_at, updated_at
       ) VALUES (?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(product_key) DO UPDATE SET
+        display_name = CASE
+          WHEN excluded.manifest_version > product_manifests.manifest_version THEN excluded.display_name
+          ELSE product_manifests.display_name
+        END,
+        manifest_version = CASE
+          WHEN excluded.manifest_version > product_manifests.manifest_version THEN excluded.manifest_version
+          ELSE product_manifests.manifest_version
+        END,
+        manifest_json = CASE
+          WHEN excluded.manifest_version > product_manifests.manifest_version THEN excluded.manifest_json
+          ELSE product_manifests.manifest_json
+        END,
+        updated_at = CASE
+          WHEN excluded.manifest_version > product_manifests.manifest_version THEN datetime('now')
+          ELSE product_manifests.updated_at
+        END
     `).bind(
       manifest.product_key,
       manifest.display_name,
