@@ -607,14 +607,32 @@ export async function readyJobs(request, env) {
 
   const url = new URL(request.url);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 25), 1), 100);
-  const result = await env.DB.prepare(`
-    SELECT * FROM job_context
-    WHERE status='production_ready'
-    ORDER BY order_id ASC, sequence_index ASC
-    LIMIT ?
-  `).bind(limit).all();
+  const role = url.searchParams.get("role") === "support" ? "support" : "primary";
+  const componentType = url.searchParams.get("component_type");
 
-  return json({ success: true, jobs: result.results || [] });
+  let sql = `
+    SELECT * FROM job_context
+    WHERE status='production_ready' AND job_role=?
+  `;
+  const params = [role];
+
+  if (role === "support" && componentType) {
+    if (!safeId(componentType)) return json({ success: false, error: "Invalid component_type" }, 400);
+    sql += " AND component_type=?";
+    params.push(componentType);
+  }
+
+  sql += " ORDER BY order_id ASC, sequence_index ASC LIMIT ?";
+  params.push(limit);
+
+  const result = await env.DB.prepare(sql).bind(...params).all();
+
+  return json({
+    success: true,
+    job_role: role,
+    component_type: role === "support" ? componentType || null : null,
+    jobs: result.results || []
+  });
 }
 
 export async function commerceStatus(request, env) {
