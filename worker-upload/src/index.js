@@ -1,3 +1,4 @@
+import { resolveProduct, upsertStripeProductMapping, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
 import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
@@ -736,6 +737,47 @@ export default {
 
       if (request.method === "POST" && path === "/api/download-tokens") {
         return createDownloadToken(request, env);
+      }
+
+
+      if (request.method === "GET" && path === "/api/commerce/status") {
+        return commerceStatus(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/products/resolve") {
+        return resolveProduct(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/product-mappings") {
+        return upsertStripeProductMapping(request, env);
+      }
+
+      const expandOrderMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/expand$/);
+      if (request.method === "POST" && expandOrderMatch) {
+        return expandOrder(request, env, expandOrderMatch[1]);
+      }
+
+      if (request.method === "POST" && path === "/api/intake-tokens") {
+        return createIntakeToken(request, env);
+      }
+
+      const resolveIntakeMatch = path.match(/^\/api\/intake-tokens\/([^/]+)$/);
+      if (request.method === "GET" && resolveIntakeMatch) {
+        return resolveIntakeToken(request, env, resolveIntakeMatch[1]);
+      }
+
+      const intakeSubmitMatch = path.match(/^\/intake\/([^/]+)$/);
+      if (request.method === "POST" && intakeSubmitMatch) {
+        return submitIntake(request, env, intakeSubmitMatch[1]);
+      }
+
+      const jobContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/context$/);
+      if (request.method === "GET" && jobContextMatch) {
+        return jobContext(request, env, jobContextMatch[1]);
+      }
+
+      if (request.method === "GET" && path === "/api/jobs/ready") {
+        return readyJobs(request, env);
       }
 
       if (request.method === "POST" && path === "/api/upload-sessions") {
