@@ -1,3 +1,5 @@
+import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus } from "./canva_bridge.js";
+import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
@@ -739,6 +741,61 @@ export default {
       if (request.method === "POST" && path === "/api/upload-sessions") {
         return createUploadSession(request, env);
       }
+
+      if (request.method === "GET" && path === "/api/canva/status") {
+        return canvaStatus(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/canva/auth/start") {
+        return canvaAuthStart(request, env);
+      }
+
+      if (request.method === "GET" && path === "/canva/oauth/callback") {
+        return canvaCallback(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/canva/designs") {
+        return canvaCreateDesign(request, env);
+      }
+
+      if (request.method === "GET" && path === "/api/canva/brand-templates") {
+        return canvaBrandTemplates(request, env);
+      }
+
+      const canvaDatasetMatch = path.match(/^\/api\/canva\/brand-templates\/([^/]+)\/dataset$/);
+      if (request.method === "GET" && canvaDatasetMatch) {
+        return canvaTemplateDataset(request, env, canvaDatasetMatch[1]);
+      }
+
+      if (request.method === "POST" && path === "/api/canva/autofills") {
+        return canvaAutofill(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/canva/exports") {
+        return canvaExport(request, env);
+      }
+
+      const canvaExportMatch = path.match(/^\/api\/canva\/exports\/([^/]+)$/);
+      if (request.method === "GET" && canvaExportMatch) {
+        return canvaExportStatus(request, env, canvaExportMatch[1]);
+      }
+
+      if (request.method === "POST" && path === "/api/visuals") {
+        return registerVisual(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/visuals/used") {
+        return markVisualUsed(request, env);
+      }
+
+      if (request.method === "GET" && path === "/api/visuals/candidates") {
+        return visualCandidates(request, env);
+      }
+
+      if (request.method === "GET" && path === "/api/visuals/recent-usage") {
+        return recentVisualUsage(request, env);
+      }
+
 
       const assetsMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/assets$/);
       if (request.method === "GET" && assetsMatch) {
