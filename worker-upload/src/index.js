@@ -208,6 +208,22 @@ async function recountOrder(env, orderId) {
   return order || null;
 }
 
+async function markNormalizedJobComplete(env, jobId) {
+  if (!jobId || !safeId(jobId) || !env.DB) return;
+
+  const table = await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='job_context'"
+  ).first();
+
+  if (!table) return;
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='complete', updated_at=datetime('now')
+    WHERE job_id=?
+  `).bind(jobId).run();
+}
+
 async function uploadObject(request, env) {
   const authError = requireAuthorized(request, env);
   if (authError) return authError;
@@ -312,6 +328,8 @@ async function completeDeliverable(request, env) {
     mimeType
   ).run();
 
+  await markNormalizedJobComplete(env, body.job_id);
+
   const order = await recountOrder(env, body.order_id);
 
   return json({
@@ -389,6 +407,8 @@ async function upsertComponent(request, env) {
     typeof body.mime_type === "string" ? body.mime_type : null,
     typeof body.display_name === "string" ? body.display_name.slice(0, 300) : null
   ).run();
+
+  await markNormalizedJobComplete(env, body.job_id || null);
 
   return json({
     success: true,
