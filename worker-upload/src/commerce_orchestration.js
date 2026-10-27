@@ -671,6 +671,8 @@ export async function readyJobs(request, env) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 25), 1), 100);
   const role = url.searchParams.get("role") === "support" ? "support" : "primary";
   const componentType = url.searchParams.get("component_type");
+  const productKey = url.searchParams.get("product_key");
+  const requestedLane = url.searchParams.get("requested_lane");
 
   let sql = `
     SELECT * FROM job_context
@@ -684,6 +686,18 @@ export async function readyJobs(request, env) {
     params.push(componentType);
   }
 
+  if (productKey) {
+    if (!safeId(productKey)) return json({ success: false, error: "Invalid product_key" }, 400);
+    sql += " AND product_key=?";
+    params.push(productKey);
+  }
+
+  if (requestedLane) {
+    if (!safeId(requestedLane)) return json({ success: false, error: "Invalid requested_lane" }, 400);
+    sql += " AND requested_lane=?";
+    params.push(requestedLane);
+  }
+
   sql += " ORDER BY order_id ASC, sequence_index ASC LIMIT ?";
   params.push(limit);
 
@@ -693,6 +707,8 @@ export async function readyJobs(request, env) {
     success: true,
     job_role: role,
     component_type: role === "support" ? componentType || null : null,
+    product_key: productKey || null,
+    requested_lane: requestedLane || null,
     jobs: result.results || []
   });
 }
