@@ -140,6 +140,7 @@ async function ensureTables(env) {
       job_id TEXT PRIMARY KEY,
       order_id TEXT NOT NULL,
       parent_job_id TEXT,
+      deliverable_id TEXT,
       product_key TEXT NOT NULL,
       deliverable_type TEXT NOT NULL,
       component_type TEXT,
@@ -188,6 +189,11 @@ async function ensureTables(env) {
       processed_at TEXT
     )`)
   ]);
+
+  const jobContextCols = await tableColumns(env, "job_context");
+  if (!jobContextCols.has("deliverable_id")) {
+    await env.DB.prepare("ALTER TABLE job_context ADD COLUMN deliverable_id TEXT").run();
+  }
 
   for (const manifest of CORE_MANIFESTS) {
     await env.DB.prepare(`
@@ -356,6 +362,7 @@ async function mirrorJob(env, ctx, body) {
     job_id: ctx.job_id,
     order_id: ctx.order_id,
     parent_job_id: ctx.parent_job_id,
+    deliverable_id: ctx.deliverable_id,
     customer_id: body.customer_id || null,
     brand_id: body.brand_id || null,
     deliverable_type: ctx.deliverable_type,
@@ -416,20 +423,31 @@ export async function expandOrder(request, env, orderId) {
 
   const requestType = safeId(body.request_type) ? body.request_type : "new";
   const jobMap = new Map();
+  const deliverableMap = new Map();
   const created = [];
 
   for (const spec of resolved.manifest.jobs || []) {
     const jobId = await stableId("job", `${orderId}|${resolved.product_key}|${resolved.manifest_version}|${spec.job_key}`);
     jobMap.set(spec.job_key, jobId);
+    if (spec.role === "primary") {
+      const deliverableId = await stableId("del", `${orderId}|${resolved.product_key}|${resolved.manifest_version}|${spec.job_key}`);
+      deliverableMap.set(spec.job_key, deliverableId);
+    }
   }
 
   for (const spec of resolved.manifest.jobs || []) {
     const jobId = jobMap.get(spec.job_key);
     const parentJobId = spec.parent_job_key ? jobMap.get(spec.parent_job_key) || null : null;
+    const deliverableId = spec.role === "primary"
+      ? deliverableMap.get(spec.job_key)
+      : spec.parent_job_key
+        ? deliverableMap.get(spec.parent_job_key) || null
+        : null;
     const ctx = {
       job_id: jobId,
       order_id: orderId,
       parent_job_id: parentJobId,
+      deliverable_id: deliverableId,
       product_key: resolved.product_key,
       deliverable_type: spec.deliverable_type,
       component_type: spec.component_type || null,
@@ -446,13 +464,14 @@ export async function expandOrder(request, env, orderId) {
 
     await env.DB.prepare(`
       INSERT INTO job_context (
-        job_id, order_id, parent_job_id, product_key, deliverable_type, component_type,
+        job_id, order_id, parent_job_id, deliverable_id, product_key, deliverable_type, component_type,
         requested_lane, job_role, counts_toward_expected, request_type, sequence_index,
         delivery_order, manifest_version, status, intake_status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       ON CONFLICT(job_id) DO UPDATE SET
         order_id=excluded.order_id,
         parent_job_id=excluded.parent_job_id,
+        deliverable_id=excluded.deliverable_id,
         product_key=excluded.product_key,
         deliverable_type=excluded.deliverable_type,
         component_type=excluded.component_type,
@@ -465,7 +484,7 @@ export async function expandOrder(request, env, orderId) {
         manifest_version=excluded.manifest_version,
         updated_at=datetime('now')
     `).bind(
-      ctx.job_id, ctx.order_id, ctx.parent_job_id, ctx.product_key, ctx.deliverable_type,
+      ctx.job_id, ctx.order_id, ctx.parent_job_id, ctx.deliverable_id, ctx.product_key, ctx.deliverable_type,
       ctx.component_type, ctx.requested_lane, ctx.job_role, ctx.counts_toward_expected,
       ctx.request_type, ctx.sequence_index, ctx.delivery_order, ctx.manifest_version,
       ctx.status, ctx.intake_status
