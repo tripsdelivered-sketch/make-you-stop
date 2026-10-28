@@ -245,3 +245,61 @@ export async function canvaExportStatus(request, env, exportId) {
   const result = await canvaFetch(env,`/exports/${encodeURIComponent(exportId)}`,{method:"GET"});
   return json({success:true,result});
 }
+
+export async function canvaExportWait(request, env, exportId) {
+  const e = needAuth(request,env); if (e) return e;
+
+  const url = new URL(request.url);
+  const requestedAttempts = Number(url.searchParams.get("max_attempts") || 12);
+  const requestedIntervalMs = Number(url.searchParams.get("interval_ms") || 1500);
+  const maxAttempts = Math.min(Math.max(Number.isFinite(requestedAttempts) ? Math.trunc(requestedAttempts) : 12, 1), 20);
+  const intervalMs = Math.min(Math.max(Number.isFinite(requestedIntervalMs) ? Math.trunc(requestedIntervalMs) : 1500, 500), 5000);
+
+  let result = null;
+  const statuses = [];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    result = await canvaFetch(env,`/exports/${encodeURIComponent(exportId)}`,{method:"GET"});
+    const status = result?.job?.status || "unknown";
+    statuses.push(status);
+
+    if (status === "success" || status === "failed") {
+      return json({
+        success: true,
+        completed: true,
+        final_status: status,
+        attempts: attempt,
+        interval_ms: intervalMs,
+        statuses,
+        result
+      });
+    }
+
+    if (status !== "in_progress") {
+      return json({
+        success: false,
+        completed: false,
+        final_status: status,
+        attempts: attempt,
+        interval_ms: intervalMs,
+        statuses,
+        result,
+        error: "Unexpected Canva export status"
+      }, 502);
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  return json({
+    success: true,
+    completed: false,
+    final_status: "timeout",
+    attempts: maxAttempts,
+    interval_ms: intervalMs,
+    statuses,
+    result
+  });
+}
