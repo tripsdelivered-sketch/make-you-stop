@@ -240,6 +240,73 @@ export async function canvaExport(request, env) {
   return json({success:true,result});
 }
 
+export async function canvaExportStore(request, env, exportId) {
+  const e = needAuth(request,env); if (e) return e;
+  if (!env.BUCKET) return json({success:false,error:"R2 bucket is not configured"},500);
+
+  let body; try { body=await request.json(); } catch { body=null; }
+  if (!body) return json({success:false,error:"Invalid JSON"},400);
+
+  const safeId = (value) => typeof value === "string" && /^[A-Za-z0-9_-]+$/.test(value);
+  if (!safeId(body.order_id)) return json({success:false,error:"Invalid order_id"},400);
+  if (!safeId(body.job_id)) return json({success:false,error:"Invalid job_id"},400);
+
+  const formats = {
+    pdf: {ext:"pdf", mime:"application/pdf"},
+    png: {ext:"png", mime:"image/png"},
+    jpg: {ext:"jpg", mime:"image/jpeg"},
+    gif: {ext:"gif", mime:"image/gif"},
+    pptx: {ext:"pptx", mime:"application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+    mp4: {ext:"mp4", mime:"video/mp4"},
+    html_bundle: {ext:"zip", mime:"application/zip"},
+    html_standalone: {ext:"html", mime:"text/html"}
+  };
+
+  const format = String(body.format || "").toLowerCase();
+  const spec = formats[format];
+  if (!spec) return json({success:false,error:"Unsupported export format"},400);
+
+  const result = await canvaFetch(env,`/exports/${encodeURIComponent(exportId)}`,{method:"GET"});
+  const status = result?.job?.status || "unknown";
+  if (status !== "success") {
+    return json({success:false,error:"Canva export is not complete",status,result},409);
+  }
+
+  const urls = Array.isArray(result?.job?.urls) ? result.job.urls : [];
+  if (!urls.length || typeof urls[0] !== "string") {
+    return json({success:false,error:"Canva export completed without a download URL",result},502);
+  }
+
+  const source = await fetch(urls[0],{method:"GET"});
+  if (!source.ok || !source.body) {
+    return json({success:false,error:`Failed to download Canva export (${source.status})`},502);
+  }
+
+  const objectKey = `canva/${body.order_id}/${body.job_id}/${exportId}.${spec.ext}`;
+  const sourceMime = (source.headers.get("Content-Type") || "").split(";")[0].trim();
+  const mimeType = sourceMime || spec.mime;
+
+  await env.BUCKET.put(objectKey,source.body,{
+    httpMetadata:{contentType:mimeType},
+    customMetadata:{
+      source:"canva",
+      canva_export_id:String(exportId),
+      format
+    }
+  });
+
+  return json({
+    success:true,
+    stored:true,
+    export_job_id:String(exportId),
+    final_status:status,
+    bucket:"make-you-stop-deliverables",
+    r2_key:objectKey,
+    mime_type:mimeType,
+    format
+  });
+}
+
 export async function canvaExportStatus(request, env, exportId) {
   const e = needAuth(request,env); if (e) return e;
   const result = await canvaFetch(env,`/exports/${encodeURIComponent(exportId)}`,{method:"GET"});
