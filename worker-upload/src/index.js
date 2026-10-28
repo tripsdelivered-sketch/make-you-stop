@@ -1,5 +1,5 @@
 import { resolveProduct, upsertStripeProductMapping, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
-import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait } from "./canva_bridge.js";
+import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait, canvaExportStore } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
 
@@ -13,7 +13,8 @@ const FILE_RULES = {
   images: { extensions: ["png", "jpg", "jpeg", "webp"], mime: ["image/png", "image/jpeg", "image/webp"] },
   videos: { extensions: ["mp4"], mime: ["video/mp4"] },
   storyboards: { extensions: ["pdf"], mime: ["application/pdf"] },
-  showcases: { extensions: ["pdf", "png", "jpg", "jpeg", "webp"], mime: ["application/pdf", "image/png", "image/jpeg", "image/webp"] }
+  showcases: { extensions: ["pdf", "png", "jpg", "jpeg", "webp"], mime: ["application/pdf", "image/png", "image/jpeg", "image/webp"] },
+  canva: { extensions: ["pdf", "png", "jpg", "jpeg", "gif", "pptx", "mp4", "zip", "html"], mime: ["application/pdf", "image/png", "image/jpeg", "image/gif", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "video/mp4", "application/zip", "text/html", "application/octet-stream"] }
 };
 
 function json(data, status = 200) {
@@ -840,6 +841,11 @@ export default {
       const canvaExportWaitMatch = path.match(/^\/api\/canva\/exports\/([^/]+)\/wait$/);
       if (request.method === "GET" && canvaExportWaitMatch) {
         return canvaExportWait(request, env, canvaExportWaitMatch[1]);
+      }
+
+      const canvaExportStoreMatch = path.match(/^\/api\/canva\/exports\/([^/]+)\/store$/);
+      if (request.method === "POST" && canvaExportStoreMatch) {
+        return canvaExportStore(request, env, canvaExportStoreMatch[1]);
       }
 
       const canvaExportMatch = path.match(/^\/api\/canva\/exports\/([^/]+)$/);
