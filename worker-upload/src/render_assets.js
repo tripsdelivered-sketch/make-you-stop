@@ -80,6 +80,8 @@ export async function createRenderAssetReference(request, env, baseUrl) {
       asset_id,
       order_id,
       job_id,
+      customer_id,
+      brand_id,
       original_name,
       r2_key,
       mime_type,
@@ -88,13 +90,44 @@ export async function createRenderAssetReference(request, env, baseUrl) {
       source_type
     FROM uploaded_assets
     WHERE asset_id = ?
-      AND order_id = ?
-      AND job_id = ?
     LIMIT 1
-  `).bind(body.asset_id, body.order_id, body.job_id).first();
+  `).bind(body.asset_id).first();
 
   if (!asset) {
-    return json({ success: false, error: "Asset does not belong to this order/job" }, 404);
+    return json({ success: false, error: "Asset not found" }, 404);
+  }
+
+  const sameOrigin =
+    asset.order_id === body.order_id &&
+    asset.job_id === body.job_id;
+
+  if (!sameOrigin) {
+    if (asset.reuse_permission !== "same_brand_allowed") {
+      return json({ success: false, error: "Asset is restricted to its origin order/job" }, 403);
+    }
+
+    if (
+      !safeId(body.customer_id) ||
+      !safeId(body.brand_id) ||
+      !asset.customer_id ||
+      !asset.brand_id ||
+      asset.customer_id !== body.customer_id ||
+      asset.brand_id !== body.brand_id
+    ) {
+      return json({ success: false, error: "Asset reuse boundary mismatch" }, 403);
+    }
+
+    const currentJob = await env.DB.prepare(`
+      SELECT job_id
+      FROM job_context
+      WHERE job_id = ?
+        AND order_id = ?
+      LIMIT 1
+    `).bind(body.job_id, body.order_id).first();
+
+    if (!currentJob) {
+      return json({ success: false, error: "Current reuse job is not valid" }, 403);
+    }
   }
 
   const mimeType = typeof asset.mime_type === "string" ? asset.mime_type : "";
@@ -138,8 +171,8 @@ export async function createRenderAssetReference(request, env, baseUrl) {
   `).bind(
     tokenHash,
     asset.asset_id,
-    asset.order_id,
-    asset.job_id,
+    body.order_id,
+    body.job_id,
     asset.r2_key,
     mimeType,
     Number(object.size || asset.size_bytes || 0) || null,

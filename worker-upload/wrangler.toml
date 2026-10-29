@@ -10,3 +10,6 @@ bucket_name = "make-you-stop-deliverables"
 binding = "DB"
 database_name = "make-you-stop"
 database_id = "30a78783-9720-4e34-b729-8d4c0e2b36a9"
+
+[stream]
+binding = "STREAM"

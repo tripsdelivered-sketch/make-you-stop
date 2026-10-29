@@ -3,6 +3,9 @@ import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBra
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
 import { createRenderAssetReference, serveRenderAsset } from "./render_assets.js";
+import { ensureAssetIntelligence, upsertAssetIntelligence } from "./asset_intelligence.js";
+import { startVideoAnalysisSource, videoAnalysisStatus, cleanupVideoAnalysisSource } from "./asset_video_analysis.js";
+import { writeDeliverableAssetProvenance } from "./deliverable_asset_provenance.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
@@ -763,6 +766,30 @@ export default {
 
       if (request.method === "POST" && path === "/api/assets/render-reference") {
         return createRenderAssetReference(request, env, RETURN_BASE);
+      }
+
+      if (request.method === "POST" && path === "/api/assets/intelligence/ensure") {
+        return ensureAssetIntelligence(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/assets/intelligence/upsert") {
+        return upsertAssetIntelligence(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/assets/intelligence/video-source") {
+        return startVideoAnalysisSource(request, env, RETURN_BASE);
+      }
+
+      if (request.method === "GET" && path === "/api/assets/intelligence/video-source/status") {
+        return videoAnalysisStatus(request, env, url);
+      }
+
+      if (request.method === "POST" && path === "/api/assets/intelligence/video-source/cleanup") {
+        return cleanupVideoAnalysisSource(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/deliverables/asset-provenance") {
+        return writeDeliverableAssetProvenance(request, env);
       }
 
 
