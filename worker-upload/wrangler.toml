@@ -13,8 +13,3 @@ database_id = "30a78783-9720-4e34-b729-8d4c0e2b36a9"
 
 [stream]
 binding = "STREAM"
-
-[[secrets_store_secrets]]
-binding = "ASSET_INTELLIGENCE_TOKEN"
-store_id = "0ce5264c855d4fb2a8cde506050674153"
-secret_name = "ASSET_INTELLIGENCE_TOKEN"
