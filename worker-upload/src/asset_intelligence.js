@@ -171,6 +171,22 @@ export async function loadValidatedAsset(env, body) {
     return { response: json({ success: false, error: boundary.error }, boundary.status) };
   }
 
+  if (boundary.reused) {
+    const currentJob = await env.DB.prepare(`
+      SELECT job_id
+      FROM job_context
+      WHERE job_id = ?
+        AND order_id = ?
+      LIMIT 1
+    `).bind(body.job_id, body.order_id).first();
+
+    if (!currentJob) {
+      return {
+        response: json({ success: false, error: "Current reuse job is not valid" }, 403)
+      };
+    }
+  }
+
   if (!ALLOWED_MEDIA.has(asset.mime_type)) {
     return { response: json({ success: false, error: "Unsupported asset MIME type" }, 400) };
   }
