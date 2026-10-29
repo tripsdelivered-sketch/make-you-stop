@@ -2,6 +2,7 @@ import { resolveProduct, upsertStripeProductMapping, expandOrder, createIntakeTo
 import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait, canvaExportStore } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
+import { createRenderAssetReference, serveRenderAsset } from "./render_assets.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
@@ -760,6 +761,10 @@ export default {
         return createDownloadToken(request, env);
       }
 
+      if (request.method === "POST" && path === "/api/assets/render-reference") {
+        return createRenderAssetReference(request, env, RETURN_BASE);
+      }
+
 
       if (request.method === "GET" && path === "/api/commerce/status") {
         return commerceStatus(request, env);
@@ -893,6 +898,11 @@ export default {
       const downloadMatch = path.match(/^\/download\/([^/]+)$/);
       if (request.method === "GET" && downloadMatch) {
         return serveDownload(env, downloadMatch[1]);
+      }
+
+      const renderAssetMatch = path.match(/^\/render-asset\/([^/]+)$/);
+      if ((request.method === "GET" || request.method === "HEAD") && renderAssetMatch) {
+        return serveRenderAsset(request, env, renderAssetMatch[1]);
       }
 
       return json({ success: false, error: "Method or route not allowed" }, 405);
