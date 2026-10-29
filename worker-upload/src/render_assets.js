@@ -57,36 +57,18 @@ async function sha256Hex(value) {
     .join("");
 }
 
-async function ensureRenderAssetTable(env) {
-  if (!env.DB) throw new Error("D1 binding is not configured");
-
-  await env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS render_asset_tokens (
-      token_hash TEXT PRIMARY KEY,
-      asset_id TEXT NOT NULL,
-      order_id TEXT NOT NULL,
-      job_id TEXT NOT NULL,
-      r2_key TEXT NOT NULL,
-      mime_type TEXT NOT NULL,
-      size_bytes INTEGER,
-      display_name TEXT,
-      active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      expires_at TEXT NOT NULL
-    )
-  `).run();
-
-  await env.DB.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_render_asset_tokens_asset
-    ON render_asset_tokens(asset_id)
-  `).run();
-}
+const RENDERABLE_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "video/mp4",
+  "video/quicktime"
+]);
 
 export async function createRenderAssetReference(request, env, baseUrl) {
   const authError = requireAuthorized(request, env);
   if (authError) return authError;
 
-  await ensureRenderAssetTable(env);
 
   const body = await readJson(request);
   if (!body || !safeId(body.asset_id) || !safeId(body.order_id) || !safeId(body.job_id)) {
@@ -116,7 +98,7 @@ export async function createRenderAssetReference(request, env, baseUrl) {
   }
 
   const mimeType = typeof asset.mime_type === "string" ? asset.mime_type : "";
-  if (!(mimeType.startsWith("image/") || mimeType.startsWith("video/"))) {
+  if (!RENDERABLE_MIME_TYPES.has(mimeType)) {
     return json({ success: false, error: "Asset MIME type is not renderable" }, 400);
   }
 
@@ -125,7 +107,14 @@ export async function createRenderAssetReference(request, env, baseUrl) {
     return json({ success: false, error: "Stored asset not found" }, 404);
   }
 
-  const ttlMinutes = Math.min(Math.max(Number(body.ttl_minutes || 60), 10), 360);
+  let ttlMinutes = 60;
+  if (body.ttl_minutes !== undefined && body.ttl_minutes !== null && body.ttl_minutes !== "") {
+    const requestedTtl = Number(body.ttl_minutes);
+    if (!Number.isFinite(requestedTtl)) {
+      return json({ success: false, error: "ttl_minutes must be a finite number" }, 400);
+    }
+    ttlMinutes = Math.min(Math.max(requestedTtl, 10), 360);
+  }
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
 
   const token = randomToken();
@@ -153,7 +142,7 @@ export async function createRenderAssetReference(request, env, baseUrl) {
     asset.job_id,
     asset.r2_key,
     mimeType,
-    Number(asset.size_bytes || object.size || 0) || null,
+    Number(object.size || asset.size_bytes || 0) || null,
     typeof asset.original_name === "string" ? asset.original_name.slice(0, 300) : null,
     expiresAt
   ).run();
@@ -164,7 +153,7 @@ export async function createRenderAssetReference(request, env, baseUrl) {
     temporary_https_url: `${baseUrl}/render-asset/${token}`,
     expires_at: expiresAt,
     mime_type: mimeType,
-    size_bytes: Number(asset.size_bytes || object.size || 0) || null,
+    size_bytes: Number(object.size || asset.size_bytes || 0) || null,
     width: null,
     height: null,
     duration_ms: null
@@ -202,8 +191,6 @@ function parseSingleRange(value, totalSize) {
 }
 
 export async function serveRenderAsset(request, env, token) {
-  await ensureRenderAssetTable(env);
-
   if (!safeText(token, 200)) {
     return json({ success: false, error: "Invalid render asset link" }, 400);
   }
@@ -236,7 +223,7 @@ export async function serveRenderAsset(request, env, token) {
     return json({ success: false, error: "Stored asset not found" }, 404);
   }
 
-  const totalSize = Number(row.size_bytes || head.size || 0);
+  const totalSize = Number(head.size || row.size_bytes || 0);
   const headers = new Headers();
   head.writeHttpMetadata(headers);
   headers.set("Cache-Control", "private, no-store");
