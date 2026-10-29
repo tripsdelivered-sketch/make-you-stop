@@ -71,16 +71,25 @@ export async function startVideoAnalysisSource(request, env, baseUrl) {
 
   const renderData = await renderResponse.json();
 
-  const video = await env.STREAM.upload(renderData.temporary_https_url, {
-    requireSignedURLs: true,
-    creator: loaded.asset.customer_id || "make-you-stop",
-    meta: {
-      purpose: "asset-intelligence",
-      asset_id: loaded.asset.asset_id,
-      order_id: loaded.asset.order_id,
-      job_id: loaded.asset.job_id
-    }
-  });
+  let video;
+  try {
+    video = await env.STREAM.upload(renderData.temporary_https_url, {
+      requireSignedURLs: true,
+      creator: loaded.asset.customer_id || "make-you-stop",
+      meta: {
+        purpose: "asset-intelligence",
+        asset_id: loaded.asset.asset_id,
+        order_id: loaded.asset.order_id,
+        job_id: loaded.asset.job_id
+      }
+    });
+  } catch (error) {
+    return json({
+      success: false,
+      error: "Stream upload failed",
+      detail: String(error?.message || error || "Unknown Stream error").slice(0, 500)
+    }, 502);
+  }
 
   return json({
     success: true,
