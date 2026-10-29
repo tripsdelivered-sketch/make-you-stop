@@ -267,3 +267,77 @@ The active product manifests distinguish two paid products and their exact launc
 - `storyboard_showcase` / **Storyboard + Showcase** — USD 29. One counted primary deliverable with required non-counting `storyboard` and `showcase` components. Produces the same 2 storyboard directions, selects the strongest direction, then creates 3–5 showcase frames mapped to meaningful story beats, plus camera/shot guidance, phone filming/framing tips, and payoff + CTA direction.
 
 For Storyboard + Showcase, storyboard and showcase components do not increment `expected_deliverables`; the purchase counts once. The Showcase is downstream of the Storyboard intelligence and must reuse the selected strongest direction rather than generating an unrelated concept.
+
+
+## Universal customer-supplied media contract
+
+Customer-supplied media is a cross-lane capability, not a Video/Reel-only feature.
+
+The existing private Cloudflare upload system already accepts images, MP4/MOV video and PDFs. Canonical asset identity, provenance, reuse permission and private storage remain owned by Cloudflare/R2/D1. Make remains responsible for deciding how an asset is used creatively.
+
+### Universal intake rule
+
+Every sellable lane may receive customer/brand/creator-supplied media when it is relevant, including:
+
+- product photos and multiple product angles;
+- packaging;
+- logos and brand assets;
+- screenshots;
+- MP4/MOV footage already filmed by the customer, creator, UGC creator or brand;
+- reference PDFs and supporting files.
+
+A lane must not reject supplied video merely because its final output is not a video. Instead, the lane contract or output adapter must classify the asset's purpose as one of:
+
+- **production footage** — directly usable in the finished output;
+- **creative reference** — informs creative intelligence, structure, hooks, story, tone or execution;
+- **supporting source** — useful for product/brand truth or presentation but not necessarily embedded;
+- **not applicable** — retained in the canonical asset manifest but not used for that deliverable.
+
+### Lane behavior
+
+- **Video/Reel**: may use supplied footage directly as production footage where appropriate.
+- **Unboxing/Product Reveal**: may use supplied product footage, creator footage, packaging footage or multiple product assets directly in video production, or as source/reference for image-slide output.
+- **Image/Words**: supplied video may be used as creative/reference input; converting arbitrary video into still frames is a separate production capability and must not be assumed unless explicitly implemented.
+- **Storyboard / Storyboard + Showcase**: supplied footage may be analysed as reference for what has already been filmed and for planning the next shots/story beats.
+- **What to Say Guide**: supplied footage may inform natural delivery, current messaging and product handling; the purchased output remains written guidance.
+- **Guide/Mini eBook**: supplied footage may be source/reference material; the purchased output remains the guide/eBook format.
+- **Hooks**: supplied footage may be analysed as creative context; the purchased output remains hooks/copy.
+
+### Asset-policy preservation
+
+Existing asset-use policy remains authoritative across lanes:
+
+- supplied_only
+- supplied_plus_supporting
+- create_visuals
+
+supplied_only must not silently replace real supplied products or footage with generated alternatives. supplied_plus_supporting may add supporting visuals while preserving supplied product truth. create_visuals may generate visuals but must not invent unsupported product claims or substitute a different real product identity.
+
+### Single-product and multi-product rule
+
+A Product Reveal/Unboxing job may represent:
+
+- one product;
+- multiple angles of one product;
+- packaging plus one product;
+- multiple variants;
+- multiple separate products;
+- a complete product collection or brand range.
+
+Canonical asset metadata should preserve enough grouping/provenance for Make to distinguish those cases. Cloudflare stores identity/provenance/grouping; Make/#525 decides the creative reveal sequence, hook, emotional angle, payoff and CTA.
+
+### Output-format independence
+
+The same canonical asset manifest may feed different finished outputs, including:
+
+- 9:16 short-form MP4 for TikTok, Instagram Reels or YouTube Shorts;
+- TikTok photo slides;
+- Instagram carousel/image slides;
+- creator/UGC treatment;
+- polished brand/product reveal treatment.
+
+Creative intelligence should be reusable across output formats. Production/presentation adapters may crop, position, sequence or otherwise prepare assets for the selected format without changing their provenance or inventing claims.
+
+### Protection rule
+
+Do not rebuild upload storage per lane. Reuse the shared Cloudflare/R2 asset system, carry the canonical asset manifest into Make, and let each lane decide whether each asset is production footage, creative reference, supporting source or not applicable.
