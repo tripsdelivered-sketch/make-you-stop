@@ -361,3 +361,43 @@ Creative intelligence should be reusable across output formats. Production/prese
 ### Protection rule
 
 Do not rebuild upload storage per lane. Reuse the shared Cloudflare/R2 asset system, carry the canonical asset manifest into Make, and let each lane decide whether each asset is production footage, creative reference, supporting source or not applicable.
+
+
+## Short-lived render access for customer-uploaded assets
+
+Customer-uploaded source media remains private in R2. Production systems such as Creatomate must not receive permanent R2 keys or public object URLs.
+
+Before customer-uploaded MP4/MOV can safely enter the Video/Reel renderer, the backend must expose a short-lived render-reference capability with this contract:
+
+- authenticated backend request from Make;
+- input: canonical asset_id plus order_id/job_id ownership context;
+- server-side lookup of uploaded_assets;
+- verify asset belongs to the requested order/job;
+- validate MIME type and size;
+- resolve the private R2 key server-side;
+- return an opaque, short-lived HTTPS render URL plus expiry and MIME metadata;
+- never expose the permanent R2 key as the render source;
+- public render URL must expire automatically;
+- video delivery should support ordinary HTTP byte-range access so remote renderers can fetch MP4/MOV safely;
+- existing customer download tokens and completed-deliverable download flow remain separate from production render references.
+
+Recommended response fields:
+
+- asset_id
+- temporary_https_url
+- expires_at
+- mime_type
+- size_bytes
+- width when known
+- height when known
+- duration_ms when known
+
+The temporary render reference is a production-only adapter. It does not change asset identity, reuse_permission, provenance, order/job ownership, or the canonical asset manifest.
+
+Implementation order:
+
+1. deploy and verify the Cloudflare render-reference endpoint;
+2. then configure the Make Video/Reel scene-assignment/compatibility adapter;
+3. route image assets through the existing still-image branch;
+4. route video assets through a video-aware branch that bypasses image-only upload/layout analysis;
+5. conditionally render image or video media while preserving the proven creative contract and completion flow.
