@@ -17,14 +17,14 @@ function safeText(value, max = 500) {
 }
 
 function isAuthorized(request, env) {
-  if (!env.UPLOAD_SECRET) return false;
+  if (!env.RENDER_ACCESS_TOKEN) return false;
   const authorization = request.headers.get("Authorization") || "";
-  return authorization === `Bearer ${env.UPLOAD_SECRET}`;
+  return authorization === `Bearer ${env.RENDER_ACCESS_TOKEN}`;
 }
 
 function requireAuthorized(request, env) {
-  if (!env.UPLOAD_SECRET) {
-    return json({ success: false, error: "Upload secret is not configured" }, 500);
+  if (!env.RENDER_ACCESS_TOKEN) {
+    return json({ success: false, error: "Render access token is not configured" }, 500);
   }
   if (!isAuthorized(request, env)) {
     return json({ success: false, error: "Unauthorized" }, 401);
