@@ -4,6 +4,7 @@ import {
   nowIso,
   deriveOrientation
 } from "./asset_intelligence.js";
+import { createRenderAssetReference } from "./render_assets.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -61,7 +62,9 @@ export async function startVideoAnalysisSource(request, env, baseUrl) {
     })
   });
 
-  const renderResponse = await fetch(renderRequest);
+  // Invoke the render-reference handler directly. Fetching this Worker's own
+  // public URL can fail as a recursive self-fetch before Stream is reached.
+  const renderResponse = await createRenderAssetReference(renderRequest, env, baseUrl);
   if (!renderResponse.ok) {
     return json({ success: false, error: "Unable to create temporary video source" }, 502);
   }
