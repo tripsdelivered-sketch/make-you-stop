@@ -326,6 +326,26 @@ A Product Reveal/Unboxing job may represent:
 
 Canonical asset metadata should preserve enough grouping/provenance for Make to distinguish those cases. Cloudflare stores identity/provenance/grouping; Make/#525 decides the creative reveal sequence, hook, emotional angle, payoff and CTA.
 
+
+### Customer-footage transformation rule
+
+Customer/brand/creator/UGC-uploaded video may be used as source material for a different finished deliverable, not only as passive reference.
+
+Supported intent should include:
+
+- **improve my video** — existing customer footage is analysed and reworked into a stronger finished Video/Reel using Make You Stop creative intelligence, including hook, pacing, sequencing, product emphasis, on-screen text treatment where appropriate, CTA and platform-native presentation;
+- **use my footage in a new reveal** — supplied clips may be incorporated into Unboxing/Product Reveal or other video outputs when the lane supports direct production use;
+- **turn my footage into image slides** — supplied video may be analysed for suitable stills/frames and transformed into Image Slides/Carousel when a dedicated frame-selection/extraction capability is implemented and proven;
+- **use as reference only** — supplied footage may inform creative decisions without being embedded in the final output.
+
+The presence of uploaded video must not force a video output. The purchased deliverable and output adapter determine the final format.
+
+For Video/Reel and Unboxing, direct use of supplied footage is allowed when the production adapter supports the canonical asset format.
+
+For Image/Words/Image Slides, video-to-still extraction is a distinct production capability. It must not be assumed to exist until a safe frame-selection/extraction step is implemented. Until then, uploaded video may still be used as creative/reference context.
+
+The creative authority remains Make. Cloudflare stores and serves the source assets and provenance. Production adapters decide how to technically transform the selected assets into the purchased output.
+
 ### Output-format independence
 
 The same canonical asset manifest may feed different finished outputs, including:
