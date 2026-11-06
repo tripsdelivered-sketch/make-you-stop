@@ -739,6 +739,95 @@ export async function jobContext(request, env, jobId) {
   });
 }
 
+
+export async function productionContext(request, env, jobId) {
+  const authError = auth(request, env);
+  if (authError) return authError;
+  await ensureTables(env);
+  if (!safeId(jobId)) return json({ success: false, error: "Invalid job_id" }, 400);
+
+  const job = await env.DB.prepare("SELECT * FROM job_context WHERE job_id = ?").bind(jobId).first();
+  if (!job) return json({ success: false, error: "Job context not found" }, 404);
+
+  const order = await env.DB.prepare(`
+    SELECT order_id, customer_id, brand_id, customer_email, product_selected, status,
+           expected_deliverables, completed_deliverables, delivery_email_sent_at
+    FROM orders WHERE order_id = ?
+  `).bind(job.order_id).first();
+
+  const intake = await env.DB.prepare(`
+    SELECT submission_id, payload_json, created_at
+    FROM intake_submissions
+    WHERE order_id = ? AND (job_id = ? OR job_id IS NULL)
+    ORDER BY created_at DESC LIMIT 1
+  `).bind(job.order_id, job.job_id).first();
+
+  const uploadedAssetsTable = await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='uploaded_assets'"
+  ).first();
+
+  let assets = [];
+  if (uploadedAssetsTable) {
+    const result = await env.DB.prepare(`
+      SELECT asset_id, order_id, job_id, customer_id, brand_id, original_name,
+             mime_type, size_bytes, reuse_permission, source_type, created_at
+      FROM uploaded_assets
+      WHERE order_id = ?
+      ORDER BY created_at ASC
+    `).bind(job.order_id).all();
+    assets = result.results || [];
+  }
+
+  const intakePayload = intake ? JSON.parse(intake.payload_json) : null;
+
+  return json({
+    success: true,
+    contract: "production_context_v1",
+    job: {
+      job_id: job.job_id,
+      order_id: job.order_id,
+      parent_job_id: job.parent_job_id || null,
+      deliverable_id: job.deliverable_id || null,
+      product_key: job.product_key,
+      deliverable_type: job.deliverable_type,
+      component_type: job.component_type || null,
+      requested_lane: job.requested_lane,
+      job_role: job.job_role,
+      counts_toward_expected: Number(job.counts_toward_expected || 0),
+      request_type: job.request_type,
+      sequence_index: Number(job.sequence_index || 1),
+      delivery_order: Number(job.delivery_order || 1),
+      manifest_version: Number(job.manifest_version || 1),
+      status: job.status,
+      intake_status: job.intake_status
+    },
+    customer_context: {
+      customer_id: order?.customer_id || null,
+      brand_id: order?.brand_id || null,
+      customer_email: order?.customer_email || null,
+      product_selected: order?.product_selected || null
+    },
+    intake: intake ? {
+      submission_id: intake.submission_id,
+      created_at: intake.created_at,
+      payload: intakePayload
+    } : null,
+    asset_manifest: assets.map((asset) => ({
+      asset_id: asset.asset_id,
+      order_id: asset.order_id,
+      job_id: asset.job_id,
+      customer_id: asset.customer_id || null,
+      brand_id: asset.brand_id || null,
+      original_name: asset.original_name || null,
+      mime_type: asset.mime_type,
+      size_bytes: asset.size_bytes == null ? null : Number(asset.size_bytes),
+      reuse_permission: asset.reuse_permission,
+      source_type: asset.source_type,
+      created_at: asset.created_at
+    }))
+  });
+}
+
 export async function readyJobs(request, env) {
   const authError = auth(request, env);
   if (authError) return authError;
