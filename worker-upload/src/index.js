@@ -1,4 +1,4 @@
-import { resolveProduct, upsertStripeProductMapping, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
+import { resolveProduct, upsertStripeProductMapping, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, productionContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
 import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait, canvaExportStore } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
@@ -800,6 +800,11 @@ export default {
       const jobContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/context$/);
       if (request.method === "GET" && jobContextMatch) {
         return jobContext(request, env, jobContextMatch[1]);
+      }
+
+      const productionContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/production-context$/);
+      if (request.method === "GET" && productionContextMatch) {
+        return productionContext(request, env, productionContextMatch[1]);
       }
 
       if (request.method === "GET" && path === "/api/jobs/ready") {

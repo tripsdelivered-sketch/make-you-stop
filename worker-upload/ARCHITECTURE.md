@@ -237,6 +237,27 @@ Token-authorized intake submission endpoint. Stores the intake payload, consumes
 
 ### Production-ready job context
 
+### Canonical production context
+
+`GET /api/jobs/{job_id}/production-context`
+
+Authenticated. Returns the Cloudflare-owned context needed to hand a canonical job into Make without reconstructing identity through Tally or Stripe.
+
+The response combines:
+
+- canonical `job_context` fields;
+- customer/order identity from `orders`;
+- the latest applicable stored intake;
+- the uploaded asset manifest for the order, including asset identity, MIME type, provenance and reuse permission.
+
+This endpoint deliberately does **not** perform Shared Asset Intelligence, scene generation, creative reasoning or assignment-resolver logic. Those remain Make responsibilities. It also does not expose permanent R2 object keys.
+
+Intended boundary:
+
+`Cloudflare production context -> Make Shared Asset Intelligence -> creative lane -> Assignment Resolver`
+
+This keeps Cloudflare/D1 as the durable business/context layer while Make remains the creative engine.
+
 `GET /api/jobs/{job_id}/context`
 
 Authenticated. Returns canonical job context, durable order context and the latest applicable stored intake.
