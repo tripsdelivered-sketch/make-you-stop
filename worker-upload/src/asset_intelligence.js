@@ -44,7 +44,7 @@ async function sha256Hex(bytes) {
 async function ensureTables(env) {
   if (!env.DB) throw new Error("D1 binding is not configured");
   await env.DB.batch([
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS asset_intelligence (
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS asset_intelligence_v1 (
       asset_id TEXT PRIMARY KEY,
       origin_order_id TEXT NOT NULL,
       origin_job_id TEXT NOT NULL,
@@ -72,8 +72,8 @@ async function ensureTables(env) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
-    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_asset_intelligence_brand ON asset_intelligence(brand_id, analysis_status)"),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS asset_analysis_sources (
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_asset_intelligence_v1_brand ON asset_intelligence_v1(brand_id, analysis_status)"),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS asset_analysis_sources_v1 (
       analysis_job_id TEXT PRIMARY KEY,
       asset_id TEXT NOT NULL,
       order_id TEXT NOT NULL,
@@ -85,7 +85,7 @@ async function ensureTables(env) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       cleaned_at TEXT
     )`),
-    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_asset_analysis_sources_asset ON asset_analysis_sources(asset_id, created_at)")
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_asset_analysis_sources_v1_asset ON asset_analysis_sources_v1(asset_id, created_at)")
   ]);
 }
 
@@ -105,7 +105,7 @@ async function getAsset(env, body) {
 }
 
 async function fingerprint(env, asset) {
-  const cached = await env.DB.prepare("SELECT source_fingerprint FROM asset_intelligence WHERE asset_id=?").bind(asset.asset_id).first();
+  const cached = await env.DB.prepare("SELECT source_fingerprint FROM asset_intelligence_v1 WHERE asset_id=?").bind(asset.asset_id).first();
   if (cached?.source_fingerprint) return cached.source_fingerprint;
   const object = await env.BUCKET.get(asset.r2_key);
   if (!object) throw new Error("Stored asset not found");
@@ -167,7 +167,7 @@ export async function ensureAssetIntelligence(request, env) {
   const asset = await getAsset(env, body);
   if (!asset) return json({ success: false, error: "Asset does not belong to this order/job identity" }, 404);
 
-  const existing = await env.DB.prepare("SELECT * FROM asset_intelligence WHERE asset_id=?").bind(asset.asset_id).first();
+  const existing = await env.DB.prepare("SELECT * FROM asset_intelligence_v1 WHERE asset_id=?").bind(asset.asset_id).first();
   if (existing?.analysis_status === "complete") {
     return json({
       success: true,
@@ -185,7 +185,7 @@ export async function ensureAssetIntelligence(request, env) {
   }
 
   await env.DB.prepare(`
-    INSERT INTO asset_intelligence (
+    INSERT INTO asset_intelligence_v1 (
       asset_id, origin_order_id, origin_job_id, customer_id, brand_id, reuse_permission,
       source_fingerprint, media_type, analysis_status, cleanup_status, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, datetime('now'), datetime('now'))
@@ -227,7 +227,7 @@ export async function upsertAssetIntelligence(request, env) {
   const tags = Array.isArray(body.asset_tags) ? body.asset_tags.map(String) : [];
 
   await env.DB.prepare(`
-    INSERT INTO asset_intelligence (
+    INSERT INTO asset_intelligence_v1 (
       asset_id, origin_order_id, origin_job_id, customer_id, brand_id, reuse_permission,
       source_fingerprint, media_type, width, height, orientation, duration_ms,
       product_or_subject_id, asset_role, subject_type, asset_tags_json, analysis_status,
@@ -276,7 +276,7 @@ export async function upsertAssetIntelligence(request, env) {
     body.cleanup_status || (type === "video" ? "pending" : "not_required")
   ).run();
 
-  const row = await env.DB.prepare("SELECT * FROM asset_intelligence WHERE asset_id=?").bind(asset.asset_id).first();
+  const row = await env.DB.prepare("SELECT * FROM asset_intelligence_v1 WHERE asset_id=?").bind(asset.asset_id).first();
   return json({ success: true, status: "ready", intelligence: intelligenceFromRow(row) });
 }
 
@@ -310,7 +310,7 @@ export async function createVideoAnalysisSource(request, env, baseUrl) {
 
   const sourceFingerprint = await fingerprint(env, asset);
   const existing = await env.DB.prepare(`
-    SELECT analysis_job_id, status FROM asset_analysis_sources
+    SELECT analysis_job_id, status FROM asset_analysis_sources_v1
     WHERE asset_id=? AND cleaned_at IS NULL
     ORDER BY created_at DESC LIMIT 1
   `).bind(asset.asset_id).first();
@@ -334,7 +334,7 @@ export async function createVideoAnalysisSource(request, env, baseUrl) {
   if (!analysisJobId) throw new Error("Stream upload returned no video id");
 
   await env.DB.prepare(`
-    INSERT INTO asset_analysis_sources (
+    INSERT INTO asset_analysis_sources_v1 (
       analysis_job_id, asset_id, order_id, job_id, customer_id, brand_id,
       source_fingerprint, status, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
@@ -383,7 +383,7 @@ export async function videoAnalysisStatus(request, env) {
 
   if (!analysisJobId) {
     const row = await env.DB.prepare(`
-      SELECT analysis_job_id FROM asset_analysis_sources
+      SELECT analysis_job_id FROM asset_analysis_sources_v1
       WHERE asset_id=? AND order_id=? AND cleaned_at IS NULL
       ORDER BY created_at DESC LIMIT 1
     `).bind(assetId, orderId).first();
@@ -391,7 +391,7 @@ export async function videoAnalysisStatus(request, env) {
   }
   if (!analysisJobId) return json({ success: false, error: "Video analysis source not found" }, 404);
 
-  const sourceRow = await env.DB.prepare("SELECT * FROM asset_analysis_sources WHERE analysis_job_id=?").bind(analysisJobId).first();
+  const sourceRow = await env.DB.prepare("SELECT * FROM asset_analysis_sources_v1 WHERE analysis_job_id=?").bind(analysisJobId).first();
   if (!sourceRow) return json({ success: false, error: "Video analysis source not found" }, 404);
   if (jobId && sourceRow.job_id !== jobId) return json({ success: false, error: "Job identity mismatch" }, 403);
   if (customerId && sourceRow.customer_id && sourceRow.customer_id !== customerId) return json({ success: false, error: "Customer identity mismatch" }, 403);
@@ -414,7 +414,7 @@ export async function videoAnalysisStatus(request, env) {
     url: thumbnailAt(details.thumbnail, durationSeconds * percentage)
   })).filter((frame) => frame.url);
 
-  await env.DB.prepare("UPDATE asset_analysis_sources SET status='ready' WHERE analysis_job_id=?").bind(analysisJobId).run();
+  await env.DB.prepare("UPDATE asset_analysis_sources_v1 SET status='ready' WHERE analysis_job_id=?").bind(analysisJobId).run();
 
   return json({
     success: true,
@@ -441,7 +441,7 @@ export async function cleanupVideoAnalysisSource(request, env) {
   let analysisJobId = safeId(body.analysis_job_id) ? body.analysis_job_id : null;
   if (!analysisJobId) {
     const row = await env.DB.prepare(`
-      SELECT analysis_job_id FROM asset_analysis_sources
+      SELECT analysis_job_id FROM asset_analysis_sources_v1
       WHERE asset_id=? AND order_id=? AND cleaned_at IS NULL
       ORDER BY created_at DESC LIMIT 1
     `).bind(body.asset_id, body.order_id).first();
@@ -456,9 +456,9 @@ export async function cleanupVideoAnalysisSource(request, env) {
     if (!/not found/i.test(message)) throw error;
   }
 
-  await env.DB.prepare("UPDATE asset_analysis_sources SET status='cleaned', cleaned_at=datetime('now') WHERE analysis_job_id=?").bind(analysisJobId).run();
+  await env.DB.prepare("UPDATE asset_analysis_sources_v1 SET status='cleaned', cleaned_at=datetime('now') WHERE analysis_job_id=?").bind(analysisJobId).run();
   await env.DB.prepare(`
-    UPDATE asset_intelligence
+    UPDATE asset_intelligence_v1
     SET cleanup_status='complete', cleanup_attempt_count=cleanup_attempt_count+1,
         next_cleanup_at=NULL, updated_at=datetime('now')
     WHERE asset_id=?
