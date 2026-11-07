@@ -58,6 +58,21 @@ function expiresAfterHours(hours) {
   return d.toISOString();
 }
 
+const PRODUCT_KEY_ALIASES = {
+  hook: "hooks",
+  hook_pack: "hooks",
+  personalised_hook: "hooks",
+  image_words_pack: "image_words",
+  what_to_say: "what_to_say_guide",
+  storyboard_pack: "storyboard",
+  unboxing: "unboxing_product_reveal"
+};
+
+function canonicalProductKey(value) {
+  if (!safeId(value)) return null;
+  return PRODUCT_KEY_ALIASES[value] || value;
+}
+
 const CORE_MANIFESTS = [
   {
     product_key: "hooks",
@@ -359,7 +374,7 @@ function extractStripePurchaseKeys(body) {
 }
 
 async function resolveManifest(env, body) {
-  let productKey = safeId(body?.product_key) ? body.product_key : null;
+  let productKey = canonicalProductKey(body?.product_key);
 
   if (!productKey) {
     const candidates = extractStripePurchaseKeys(body);
@@ -369,7 +384,7 @@ async function resolveManifest(env, body) {
         "SELECT product_key FROM stripe_product_mappings WHERE mapping_key = ? AND active = 1"
       ).bind(mappingKey).first();
       if (mapping?.product_key) {
-        productKey = mapping.product_key;
+        productKey = canonicalProductKey(mapping.product_key);
         break;
       }
     }
