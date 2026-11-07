@@ -1,4 +1,4 @@
-import { resolveProduct, upsertStripeProductMapping, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, productionContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
+import { resolveProduct, upsertStripeProductMapping, createShoppingIntent, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, productionContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
 import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait, canvaExportStore } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
@@ -793,6 +793,22 @@ export default {
 
       if (request.method === "POST" && path === "/api/products/resolve") {
         return resolveProduct(request, env);
+      }
+
+      if (request.method === "OPTIONS" && path === "/api/shop-intents") {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "86400"
+          }
+        });
+      }
+
+      if (request.method === "POST" && path === "/api/shop-intents") {
+        return createShoppingIntent(request, env);
       }
 
       if (request.method === "POST" && path === "/api/product-mappings") {
