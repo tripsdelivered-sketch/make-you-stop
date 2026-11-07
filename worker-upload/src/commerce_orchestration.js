@@ -78,7 +78,9 @@ const SEEDED_STRIPE_MAPPINGS = [
   { mapping_key: "product:prod_VaJe6zShQaEYHG", product_key: "hooks" },
   { mapping_key: "payment_link:plink_1UZ9JZBG3Bv4a9NrTrwe8Hi4", product_key: "hooks" },
   { mapping_key: "price:price_1UZ94DBG3Bv4a9Nr4bM8aB6X", product_key: "image_words" },
-  { mapping_key: "product:prod_VaJhqJY7VC3kug", product_key: "image_words" }
+  { mapping_key: "product:prod_VaJhqJY7VC3kug", product_key: "image_words" },
+  { mapping_key: "price:price_1UZ96CBG3Bv4a9NrzvsxrxUK", product_key: "what_to_say_guide" },
+  { mapping_key: "product:prod_VaJjS6v1FnzCe6", product_key: "what_to_say_guide" }
 ];
 
 const CORE_MANIFESTS = [
