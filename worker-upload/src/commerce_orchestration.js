@@ -10,6 +10,17 @@ function json(data, status = 200) {
   });
 }
 
+function publicJson(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*"
+    }
+  });
+}
+
 function safeId(value) {
   return typeof value === "string" && /^[A-Za-z0-9_-]+$/.test(value);
 }
@@ -398,11 +409,11 @@ export async function createShoppingIntent(request, env) {
 
   const body = await readJson(request);
   if (!body || !safeId(body.product_key)) {
-    return json({ success: false, error: "Invalid product_key" }, 400);
+    return publicJson({ success: false, error: "Invalid product_key" }, 400);
   }
 
   const manifest = await resolveManifest(env, { product_key: body.product_key });
-  if (!manifest) return json({ success: false, error: "Unknown product_key" }, 404);
+  if (!manifest) return publicJson({ success: false, error: "Unknown product_key" }, 404);
 
   const allowedAudiences = new Set(["creator", "small-business", "brand"]);
   const audience = allowedAudiences.has(body.audience) ? body.audience : null;
@@ -430,7 +441,7 @@ export async function createShoppingIntent(request, env) {
     expiresAt
   ).run();
 
-  return json({
+  return publicJson({
     success: true,
     intent_id: intentId,
     product_key: manifest.product_key,
