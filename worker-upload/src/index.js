@@ -821,10 +821,10 @@ button:disabled{opacity:.6;cursor:not-allowed}.note{font-size:14px;color:#555;ma
 </div>
 <script>
 const checkout='https://buy.stripe.com/test_14A00i1Q1azJ2YE5b6fMA02';
-const $=s=>document.querySelector(s), $=s=>[...document.querySelectorAll(s)];
+const $=s=>document.querySelector(s);
 document.querySelector('#go').addEventListener('click',async()=>{
  const btn=$('#go'),status=$('#status');btn.disabled=true;status.textContent='Preparing secure checkout…';
- const brief={promotion_subject:$('#promotion').value.trim(),brand_summary:$('#brand').value.trim(),key_message:$('#message').value.trim(),platforms:$('input[name=platform]:checked').map(x=>x.value),cta:$('#cta').value.trim(),destination_url:$('#url').value.trim(),extra_notes:$('#notes').value.trim()};
+ const brief={promotion_subject:$('#promotion').value.trim(),brand_summary:$('#brand').value.trim(),key_message:$('#message').value.trim(),platforms:[...document.querySelectorAll('input[name=platform]:checked')].map(x=>x.value),cta:$('#cta').value.trim(),destination_url:$('#url').value.trim(),extra_notes:$('#notes').value.trim()};
  try{
   const r=await fetch('/api/shop-intents',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audience:'creator',niches:['Creator / Personal Brand'],product_key:'hooks',brief,source:'website'})});
   const data=await r.json().catch(()=>({}));if(!r.ok||!data.success)throw new Error(data.error||'Unable to prepare checkout');
