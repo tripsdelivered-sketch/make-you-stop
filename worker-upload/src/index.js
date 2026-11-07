@@ -827,7 +827,7 @@ document.querySelector('#go').addEventListener('click',async()=>{
  const brief={promotion_subject:$('#promotion').value.trim(),brand_summary:$('#brand').value.trim(),key_message:$('#message').value.trim(),platforms:[...document.querySelectorAll('input[name=platform]:checked')].map(x=>x.value),cta:$('#cta').value.trim(),destination_url:$('#url').value.trim(),extra_notes:$('#notes').value.trim()};
  try{
   const r=await fetch('/api/shop-intents',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audience:'creator',niches:['Creator / Personal Brand'],product_key:'hooks',brief,source:'website'})});
-  const data=await r.json().catch(()=>({}));if(!r.ok||!data.success)throw new Error(data.error||'Unable to prepare checkout');
+  const data=await r.json().catch(()=>({}));if(!r.ok||!data.success)throw new Error(data.detail?`${data.error||'Unable to prepare checkout'} — ${data.detail}`:(data.error||'Unable to prepare checkout'));
   const u=new URL(checkout);u.searchParams.set('client_reference_id',data.intent_id);location.href=u.toString();
  }catch(e){status.textContent=e.message||'Unable to prepare checkout';btn.disabled=false;}
 });
