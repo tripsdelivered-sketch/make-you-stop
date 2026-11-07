@@ -91,3 +91,14 @@ Canva remains the premium downstream presentation/render layer where proven and 
 
 ## First recommended paid path
 Hooks first, then What to Say Guide. Both use already-tested lanes and can avoid the old long Tally when the storefront brief is complete.
+
+
+## Legacy key protection
+Cloudflare canonicalizes older storefront/catalogue aliases before routing so historic purchase-key names cannot send the order to the wrong lane:
+- hook / hook_pack / personalised_hook -> hooks
+- image_words_pack -> image_words
+- what_to_say -> what_to_say_guide
+- storyboard_pack -> storyboard
+- unboxing -> unboxing_product_reveal
+
+New storefront and Stripe mappings should still use the canonical keys.
