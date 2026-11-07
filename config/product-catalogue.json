@@ -122,7 +122,7 @@
       "delivery": "compact polished guide around one clear topic or purpose",
       "delivery_format": "PDF",
       "stripe_product_id": "prod_VaE5LXVqUxXRR1",
-      "stripe_price_id": null,
+      "stripe_price_id": "price_1UZ3dfBG3Bv4a9NrJILRsKTP",
       "cloudflare_mapping_status": "to_verify",
       "live_run_status": "next",
       "approved_for_live_sale": false
