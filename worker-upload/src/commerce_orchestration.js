@@ -732,6 +732,80 @@ export async function expandOrder(request, env, orderId) {
   });
 }
 
+
+export async function startIntakeFromCheckout(request, env, tallyBaseUrl) {
+  await ensureTables(env);
+
+  const url = new URL(request.url);
+  const sessionId = url.searchParams.get("session_id") || "";
+  if (!/^cs_(test_)?[A-Za-z0-9_]+$/.test(sessionId) || sessionId.length > 220) {
+    return new Response("<h1>Invalid checkout session</h1>", {
+      status: 400,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
+    });
+  }
+
+  const intent = await env.DB.prepare(`
+    SELECT intent_id, order_id, selected_product_key
+    FROM shopping_intents
+    WHERE checkout_session_id = ? AND order_id IS NOT NULL
+    ORDER BY consumed_at DESC
+    LIMIT 1
+  `).bind(sessionId).first();
+
+  if (!intent?.order_id) {
+    return new Response(`<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="2">
+<title>Preparing your creative brief</title></head>
+<body style="font-family:Arial,sans-serif;max-width:620px;margin:80px auto;padding:0 20px">
+<h1>Payment received.</h1>
+<p>We’re preparing your creative brief now. This page will continue automatically.</p>
+</body></html>`, {
+      status: 202,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
+    });
+  }
+
+  const job = await env.DB.prepare(`
+    SELECT job_id, product_key
+    FROM job_context
+    WHERE order_id = ? AND job_role = 'primary'
+    ORDER BY sequence_index ASC
+    LIMIT 1
+  `).bind(intent.order_id).first();
+
+  if (!job?.job_id) {
+    return new Response("<h1>Your order exists, but the creative job is not ready yet.</h1>", {
+      status: 409,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
+    });
+  }
+
+  await env.DB.prepare(`
+    UPDATE intake_tokens
+    SET active = 0
+    WHERE order_id = ? AND job_id = ? AND active = 1
+  `).bind(intent.order_id, job.job_id).run();
+
+  const rawToken = token(32);
+  const tokenHash = await sha256Hex(rawToken);
+  const expiresAt = expiresAfterHours(DEFAULT_TOKEN_TTL_HOURS);
+
+  await env.DB.prepare(`
+    INSERT INTO intake_tokens (token_hash, order_id, job_id, intake_type, active, created_at, expires_at)
+    VALUES (?, ?, ?, 'creative_brief', 1, datetime('now'), ?)
+  `).bind(tokenHash, intent.order_id, job.job_id, expiresAt).run();
+
+  const target = new URL(tallyBaseUrl);
+  target.searchParams.set("intake_token", rawToken);
+  target.searchParams.set("order_id", intent.order_id);
+  target.searchParams.set("job_id", job.job_id);
+  target.searchParams.set("product_key", job.product_key);
+
+  return Response.redirect(target.toString(), 302);
+}
+
 export async function createIntakeToken(request, env) {
   const authError = auth(request, env);
   if (authError) return authError;
