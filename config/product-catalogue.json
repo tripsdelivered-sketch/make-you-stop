@@ -9,7 +9,10 @@
     {
       "customer_name": "1 Personalised Hook",
       "product_key": "personalised_hook",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 3,
       "billing": "one_time",
       "make_route": "#160",
@@ -23,7 +26,10 @@
     {
       "customer_name": "1 Image / Words Creative",
       "product_key": "image_words",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 9,
       "billing": "one_time",
       "make_route": "#193",
@@ -38,7 +44,10 @@
     {
       "customer_name": "What to Say Guide",
       "product_key": "what_to_say",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 9,
       "billing": "one_time",
       "make_route": "#524 -> #526 -> #527",
@@ -52,7 +61,10 @@
     {
       "customer_name": "Storyboard Direction",
       "product_key": "storyboard",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 12,
       "billing": "one_time",
       "make_route": "#159",
@@ -66,7 +78,10 @@
     {
       "customer_name": "Storyboard + Visual Showcase",
       "product_key": "storyboard_showcase",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 22,
       "billing": "one_time",
       "make_route": "#159 / showcase path",
@@ -80,7 +95,10 @@
     {
       "customer_name": "Unboxing / Product Reveal",
       "product_key": "unboxing_product_reveal",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 19,
       "billing": "one_time",
       "make_route": "proven lane - exact current production route to confirm during live run",
@@ -94,13 +112,16 @@
     {
       "customer_name": "Guide / Mini eBook",
       "product_key": "guide_ebook",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 29,
       "billing": "one_time",
       "make_route": "Guide / Mini eBook intelligence -> #544 -> #545",
       "delivery": "compact polished guide around one clear topic or purpose",
       "delivery_format": "PDF",
-      "stripe_product_id": null,
+      "stripe_product_id": "prod_VaE5LXVqUxXRR1",
       "stripe_price_id": null,
       "cloudflare_mapping_status": "to_verify",
       "live_run_status": "next",
@@ -109,7 +130,10 @@
     {
       "customer_name": "1 Finished Short-Form Video / Reel",
       "product_key": "video_reel",
-      "audiences": ["creator", "business"],
+      "audiences": [
+        "creator",
+        "business"
+      ],
       "price_usd": 39,
       "billing": "one_time",
       "make_route": "#23 -> protected Creatomate MP4 production spine",
