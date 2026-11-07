@@ -73,6 +73,12 @@ function canonicalProductKey(value) {
   return PRODUCT_KEY_ALIASES[value] || value;
 }
 
+const SEEDED_STRIPE_MAPPINGS = [
+  { mapping_key: "price:price_1UZ90pBG3Bv4a9NrwDdEYWgo", product_key: "hooks" },
+  { mapping_key: "product:prod_VaJe6zShQaEYHG", product_key: "hooks" },
+  { mapping_key: "payment_link:plink_1UZ9JZBG3Bv4a9NrTrwe8Hi4", product_key: "hooks" }
+];
+
 const CORE_MANIFESTS = [
   {
     product_key: "hooks",
@@ -283,6 +289,17 @@ async function ensureTables(env) {
   const shoppingIntentCols = await tableColumns(env, "shopping_intents");
   if (!shoppingIntentCols.has("brief_json")) {
     await env.DB.prepare("ALTER TABLE shopping_intents ADD COLUMN brief_json TEXT NOT NULL DEFAULT '{}'").run();
+  }
+
+  for (const mapping of SEEDED_STRIPE_MAPPINGS) {
+    await env.DB.prepare(`
+      INSERT INTO stripe_product_mappings (mapping_key, product_key, active, created_at, updated_at)
+      VALUES (?, ?, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(mapping_key) DO UPDATE SET
+        product_key = excluded.product_key,
+        active = 1,
+        updated_at = datetime('now')
+    `).bind(mapping.mapping_key, mapping.product_key).run();
   }
 
   for (const manifest of CORE_MANIFESTS) {
