@@ -109,34 +109,25 @@
 <section class="wrap section guided-shop" id="shop">
   <div class="shop-intro">
     <p class="eyebrow">THE CREATIVE SHOP</p>
-    <h2>Start with what suits you.</h2>
-    <p>Choose who you are first. Then browse what is available or let Make You Stop help you narrow it down.</p>
-    <p class="single-order-note">Start with one small item if that is all you need. Mix products and niches in the same cart. Packages are optional, not required.</p>
+    <h2>Choose what you want us to make.</h2>
+    <p>Pick your niche, choose one creative product, then answer only the questions needed to make that item properly.</p>
+    <p class="single-order-note">For launch, checkout is one product at a time. Your niche changes the creative context — it does not create a different production lane.</p>
   </div>
 
   <div class="shop-step audience-step" id="audienceStep">
     <div class="step-number">1</div>
-    <div class="step-copy"><p class="eyebrow">WHO ARE YOU?</p><h3>Choose your shopping path.</h3><p>You will only see the options relevant to you.</p></div>
+    <div class="step-copy"><p class="eyebrow">WHO ARE YOU?</p><h3>Choose your path.</h3><p>This helps us frame the brief appropriately.</p></div>
     <div class="choice-grid audience-choice-grid">
-      <button class="shop-choice" type="button" data-audience="creator"><strong>Creator</strong><span>Start small, buy individual creative, mix niches and build up only if you want to.</span></button>
-      <button class="shop-choice" type="button" data-audience="small-business"><strong>Small Business</strong><span>Practical content help with individual creative and useful combinations.</span></button>
-      <button class="shop-choice" type="button" data-audience="brand"><strong>Brand</strong><span>Campaign-led creative, testing options and larger commercial scopes.</span></button>
-    </div>
-  </div>
-
-  <div class="shop-step mode-step" id="modeStep" hidden>
-    <div class="step-number">2</div>
-    <div class="step-copy"><p class="eyebrow">HOW DO YOU WANT TO SHOP?</p><h3 id="modeHeading">Choose your way in.</h3></div>
-    <div class="choice-grid mode-choice-grid">
-      <button class="shop-choice" type="button" data-mode="guided"><strong>Help me choose</strong><span>Answer a few simple questions and see a small recommended set.</span></button>
-      <button class="shop-choice" type="button" data-mode="browse"><strong>Browse what’s on offer</strong><span>See the relevant products for your customer type and build your own cart.</span></button>
+      <button class="shop-choice" type="button" data-audience="creator"><strong>Creator</strong><span>I create content for myself, my audience or my personal brand.</span></button>
+      <button class="shop-choice" type="button" data-audience="small-business"><strong>Small Business</strong><span>I need practical creative for a business, service or product.</span></button>
+      <button class="shop-choice" type="button" data-audience="brand"><strong>Brand</strong><span>I need campaign, UGC or larger commercial creative.</span></button>
     </div>
   </div>
 
   <div class="shop-step niche-step" id="nicheStep" hidden>
-    <div class="step-number">3</div>
-    <div class="step-copy"><p class="eyebrow">YOUR NICHE</p><h3>What are we creating for?</h3><p>Change this any time before adding the next item — each cart item keeps its own niche.</p></div>
-    <label class="niche-select-wrap">Current niche
+    <div class="step-number">2</div>
+    <div class="step-copy"><p class="eyebrow">YOUR NICHE</p><h3>What are we creating for?</h3><p>The same Make You Stop engine works across niches. This selection gives it the right context.</p></div>
+    <label class="niche-select-wrap">Choose your niche
       <select id="currentNiche">
         <option value="">Choose a niche</option>
         <option>Beauty / Skincare</option>
@@ -153,51 +144,42 @@
     </label>
   </div>
 
-  <div class="shop-step guided-questions" id="guidedQuestions" hidden>
-    <div class="step-number">4</div>
-    <div class="step-copy"><p class="eyebrow">A LITTLE DIRECTION</p><h3>Tell us what you need help with.</h3></div>
-    <div class="guided-grid">
-      <label>What do you need help with?
-        <select id="needSelect">
-          <option value="">Choose one</option>
-          <option value="hooks">I need better hooks</option>
-          <option value="ideas">I need ideas for what to post</option>
-          <option value="image">I need a finished image/post</option>
-          <option value="video">I need a short-form video/reel</option>
-          <option value="say">I need help explaining what to say</option>
-          <option value="storyboard">I need a storyboard before I film</option>
-          <option value="product">I need help promoting a product/service</option>
-          <option value="ad">I need content for an ad</option>
-          <option value="unsure">I’m not sure — recommend something</option>
-        </select>
-      </label>
-      <label>What are you trying to do?
-        <select id="goalSelect">
-          <option value="">Choose one</option>
-          <option>Promote a product</option>
-          <option>Launch something</option>
-          <option>Get more attention</option>
-          <option>Explain a service</option>
-          <option>Tell a story</option>
-          <option>Educate my audience</option>
-          <option>Create an offer / promotion</option>
-          <option>Show how something works</option>
-          <option>Build consistent social content</option>
-        </select>
-      </label>
-    </div>
-    <button class="btn primary recommend-btn" id="recommendBtn" type="button">Show my recommendations</button>
+  <div class="shop-step product-step" id="productStep" hidden>
+    <div class="step-number">3</div>
+    <div class="step-copy"><p class="eyebrow">YOUR CREATIVE</p><h3>What would you like us to create?</h3><p>Choose one item. We will only ask the extra questions needed for that product.</p></div>
+    <div class="product-choice-grid" id="productChoiceGrid"></div>
   </div>
 
-  <div class="shop-results" id="shopResults" hidden>
-    <div class="results-head">
-      <div><p class="eyebrow" id="resultsEyebrow">YOUR OPTIONS</p><h3 id="resultsTitle">Choose what you want.</h3><p id="resultsNote">Add one item or build a mixed cart.</p></div>
-      <button class="text-button" id="changePathBtn" type="button">Change shopping path</button>
+  <div class="shop-step smart-brief" id="briefStep" hidden>
+    <div class="step-number">4</div>
+    <div class="step-copy"><p class="eyebrow">A SHORT BRIEF</p><h3 id="briefHeading">Tell us what this creative is about.</h3><p id="briefNote">Three core questions give the engine the context it needs. Extra questions only appear when the selected product needs them.</p></div>
+
+    <div class="brief-summary" id="briefSummary"></div>
+
+    <div class="brief-grid">
+      <label class="brief-field full">What are you promoting?
+        <textarea id="promotionSubject" rows="3" placeholder="Your product, service, offer, topic, idea or message" required></textarea>
+      </label>
+      <label class="brief-field full">Tell us a little about your brand, business or page
+        <textarea id="brandSummary" rows="3" placeholder="A short description is enough" required></textarea>
+      </label>
+      <label class="brief-field full">What would you like people to know?
+        <textarea id="keyMessage" rows="3" placeholder="The main message, benefit, fact or takeaway" required></textarea>
+      </label>
     </div>
-    <div class="shop-grid" id="dynamicShopGrid"></div>
-    <p class="preview-note">Preview pricing for experience testing only. Final prices will be locked after real per-item economics are checked.</p>
+
+    <div class="adaptive-brief" id="adaptiveBrief"></div>
+
+    <label class="brief-field full optional-note">Anything else you'd like us to know?
+      <textarea id="extraNotes" rows="3" placeholder="Optional"></textarea>
+    </label>
+
+    <div class="brief-actions">
+      <button class="btn primary" id="addBriefToCart" type="button">Review this order</button>
+      <button class="text-button" id="changeProductBtn" type="button">Choose a different creative</button>
+    </div>
   </div>
-</section><section class="how-minimal section" id="how">
+</section></section><section class="how-minimal section" id="how">
 <div class="wrap how-minimal-inner">
 <p class="eyebrow">FROM IDEA TO CONTENT</p>
 <h2>Choose it. See it. Create it.</h2>
@@ -272,15 +254,15 @@
 <div class="cart-backdrop" hidden="" id="cartBackdrop"></div>
 <aside aria-hidden="true" aria-label="Preview cart" class="cart-drawer" id="cartDrawer">
 <div class="cart-head">
-<div><p class="eyebrow">Preview cart</p><h2>Your creative</h2><p class="cart-context-note">Each item keeps its own niche and customer path.</p></div>
+<div><p class="eyebrow">Preview cart</p><h2>Your creative</h2><p class="cart-context-note">Your selected creative and production brief.</p></div>
 <button aria-label="Close cart" class="cart-close" id="cartClose" type="button">×</button>
 </div>
 <div class="cart-items" id="cartItems"><p class="cart-empty">Your cart is empty.</p></div>
 <div class="cart-upgrade" id="cartUpgrade" hidden></div>
 <div class="cart-summary">
-<div><span>Preview total</span><strong id="cartTotal">$0</strong></div>
-<button class="checkout-preview" id="checkoutPreview" disabled type="button">Continue to checkout</button>
-<p>Checkout is intentionally not live in this preview. Stripe IDs come after the experience and economics are approved.</p>
+<div><span>Order total</span><strong id="cartTotal">$0</strong></div>
+<button class="checkout-preview" id="checkoutPreview" disabled type="button">Continue to payment</button>
+<p id="checkoutStatus">Payment connection will activate after the product Stripe link is mapped.</p>
 </div>
 </aside>
 <script>
@@ -380,233 +362,265 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 (function(){
   const catalog = [
-    {key:'content_starter', audiences:['creator'], name:'Content Starter', price:9, label:'DIY starter', desc:'A low-cost mini guide when you want practical direction first.', bonus:'Includes a small personalised next-step suggestion.', type:'education', includes:['Mini content guide','Hook + CTA frameworks','Timing + pacing help','DIY checklist']},
-    {key:'hooks', audiences:['creator','small-business'], name:'1 Personalised Hook', price:3, label:'Easy first try', desc:'One tailored opening built around your niche, audience and goal.', bonus:'Free bonus: CTA + caption starter + quick usage note.', type:'hook', includes:['1 personalised hook','Tailored to your niche','CTA suggestion','Caption starter']},
-    {key:'image_words', audiences:['creator','small-business'], name:'1 Image / Words Creative', price:9, label:'Finished creative', desc:'One finished static social creative built around a clear story or message.', bonus:'Free bonus: caption + CTA + topic suggestions.', type:'image', includes:['1 finished creative','Social-first text treatment','Caption direction','CTA direction']},
-    {key:'what_to_say', audiences:['creator','small-business'], name:'1 What to Say Guide', price:9, label:'Say it clearly', desc:'One clear speaking/content direction when you know the idea but not the words.', bonus:'Free bonus: opening hook + pacing tip + CTA.', type:'say', includes:['1 speaking direction','Hook starter','Pacing guidance','CTA direction']},
-    {key:'storyboard', audiences:['creator','small-business'], name:'1 Storyboard Direction', price:12, label:'Plan before filming', desc:'Map one social story before you film it.', bonus:'Free bonus: first-shot tip + filming note + CTA.', type:'storyboard', includes:['1 custom concept','Hook + emotional angle','5-stage story flow','Visual direction + CTA']},
-    {key:'storyboard_showcase', audiences:['creator','small-business'], name:'Storyboard + Visual Showcase', price:22, label:'See it before you film it', desc:'Plan the story and see the strongest beats visually.', bonus:'Free bonus: filming + caption + sound direction.', type:'showcase', includes:['1 storyboard direction','3–5 visual concept frames','Camera / framing guidance','Payoff + CTA']},
-    {key:'unboxing', audiences:['creator','small-business','brand'], name:'Unboxing / Product Reveal', price:19, label:'Product story', desc:'A product-reveal plan built around anticipation, sequence and payoff.', bonus:'Free bonus: opening hook + first 3–5 seconds + caption/music direction.', type:'unboxing', includes:['Reveal hook','Shot sequence','Product close-up guidance','Payoff + CTA']},
-    {key:'video_reel', audiences:['creator','small-business','brand'], name:'1 Finished Video / Reel', price:39, label:'Finished creative', desc:'One finished short-form video built around a clear hook and story.', bonus:'Free bonus: caption + CTA + posting/topic + music suggestions.', type:'video', includes:['1 finished short-form video','Hook + story pacing','Captions / text treatment','Cover-frame suggestion']},
-    {key:'guide_ebook', audiences:['creator','small-business'], name:'Guide / Mini eBook', price:29, label:'Ready-to-send PDF', desc:'A compact polished guide around one clear topic or purpose.', bonus:'Free bonus: 1 promotion idea + hook/CTA direction.', type:'guide', includes:['Approx. 5–8 pages','Cover + structured content','Polished layout','Ready-to-send PDF']},
-    {key:'social_starter', audiences:['small-business'], name:'Social Starter', price:49, label:'Small business starter', desc:'A practical starting mix when you want several useful pieces working together.', bonus:'Includes next-content recommendation after delivery.', type:'business-bundle', includes:['3 content angles','Hooks','Finished social creative mix','Caption + CTA direction']},
-    {key:'content_boost', audiences:['small-business'], name:'Content Boost', price:79, label:'Small business mix', desc:'A broader multi-format content boost around one offer, service or product.', bonus:'Includes next-step recommendation based on the delivered mix.', type:'business-bundle', includes:['Multiple content angles','Hooks','Video + Image/Words mix','Storyboard direction']},
-    {key:'brand_test', audiences:['brand'], name:'Brand Creative Test', price:79, label:'Low-risk brand test', desc:'Test Make You Stop on one product, service or campaign before a larger scope.', bonus:'Includes a follow-on creative recommendation after delivery.', type:'brand', includes:['Campaign angles','Hook directions','Storyboard direction','Finished creative test']},
-    {key:'brand_starter', audiences:['brand'], name:'Brand Starter', price:299, label:'Mini campaign', desc:'A broader starting package built from one shared brand brief.', bonus:'Includes recommended next campaign test after delivery.', type:'brand', includes:['Campaign direction','Multiple concepts','Image + Video creative','Storyboard / Showcase planning']},
-    {key:'brand_growth', audiences:['brand'], name:'Brand Growth', price:549, label:'Campaign pack', desc:'More creative volume, variation and product integration for a larger test.', bonus:'Includes ongoing creative recommendations from the campaign context.', type:'brand', includes:['Larger concept set','Multiple videos','Multiple image creatives','Storyboard + Showcase concepts']},
-    {key:'creator_monthly', audiences:['creator'], name:'Creator Monthly', price:99, label:'Monthly', desc:'For creators who want a regular flow of creative support.', bonus:'Monthly recommendations can build from previous approved context.', type:'monthly', includes:['12 content directions / month','Hook + script/caption direction','Image/Words concepts','Angle + CTA direction']}
+    {key:'hooks', audiences:['creator','small-business'], name:'Personalised Hooks', price:3, label:'Stop the scroll', type:'hooks', desc:'Hook ideas tailored to your niche, message and goal.'},
+    {key:'image_words', audiences:['creator','small-business'], name:'Image / Words Creative', price:9, label:'Finished static creative', type:'image', desc:'A finished social image built around a clear message and story.'},
+    {key:'what_to_say_guide', audiences:['creator','small-business'], name:'What to Say Guide', price:9, label:'Know what to say', type:'script', desc:'Clear speaking/content direction with an opening, key points and CTA.'},
+    {key:'storyboard', audiences:['creator','small-business'], name:'Storyboard Direction', price:12, label:'Plan before filming', type:'storyboard', desc:'See how one idea can unfold before you film it.'},
+    {key:'storyboard_showcase', audiences:['creator','small-business'], name:'Storyboard + Visual Showcase', price:22, label:'See it before you film it', type:'showcase', desc:'Storyboard direction plus visual concept frames for the strongest beats.'},
+    {key:'unboxing_product_reveal', audiences:['creator','small-business','brand'], name:'Unboxing / Product Reveal', price:19, label:'Product story', type:'unboxing', desc:'A reveal concept built around anticipation, product focus and payoff.'},
+    {key:'video_reel', audiences:['creator','small-business','brand'], name:'Finished Video / Reel', price:39, label:'Finished short-form creative', type:'video', desc:'A finished vertical video built around hook, story progression and payoff.'},
+    {key:'guide_ebook', audiences:['creator','small-business'], name:'Guide / Mini eBook', price:29, label:'Polished PDF', type:'guide', desc:'A compact guide around one clear topic, purpose or outcome.'}
   ];
 
-  let audience = '';
-  let mode = '';
-  let currentNiche = '';
-  let currentNeed = '';
-  let currentGoal = '';
-  let cart = [];
+  const stripeCheckoutLinks = {
+    // Add the approved Stripe Payment Link URL for each product only after its mapping is confirmed.
+    hooks: null,
+    image_words: null,
+    what_to_say_guide: null,
+    storyboard: null,
+    storyboard_showcase: null,
+    unboxing_product_reveal: null,
+    video_reel: null,
+    guide_ebook: null
+  };
 
-  const audienceStep = document.getElementById('audienceStep');
-  const modeStep = document.getElementById('modeStep');
-  const nicheStep = document.getElementById('nicheStep');
-  const guidedQuestions = document.getElementById('guidedQuestions');
-  const shopResults = document.getElementById('shopResults');
-  const grid = document.getElementById('dynamicShopGrid');
-  const nicheSelect = document.getElementById('currentNiche');
-  const cartDrawer = document.getElementById('cartDrawer');
-  const cartBackdrop = document.getElementById('cartBackdrop');
-  const cartItems = document.getElementById('cartItems');
-  const cartCount = document.getElementById('cartCount');
-  const cartTotal = document.getElementById('cartTotal');
-  const cartUpgrade = document.getElementById('cartUpgrade');
-  const checkoutPreview = document.getElementById('checkoutPreview');
+  let audience='';
+  let currentNiche='';
+  let selectedProduct=null;
+  let orderDraft=null;
 
-  const audienceLabels = {creator:'Creator','small-business':'Small Business',brand:'Brand'};
+  const nicheStep=document.getElementById('nicheStep');
+  const productStep=document.getElementById('productStep');
+  const briefStep=document.getElementById('briefStep');
+  const nicheSelect=document.getElementById('currentNiche');
+  const productGrid=document.getElementById('productChoiceGrid');
+  const adaptiveBrief=document.getElementById('adaptiveBrief');
+  const briefSummary=document.getElementById('briefSummary');
+  const cartDrawer=document.getElementById('cartDrawer');
+  const cartBackdrop=document.getElementById('cartBackdrop');
+  const cartItems=document.getElementById('cartItems');
+  const cartCount=document.getElementById('cartCount');
+  const cartTotal=document.getElementById('cartTotal');
+  const checkoutButton=document.getElementById('checkoutPreview');
+  const checkoutStatus=document.getElementById('checkoutStatus');
+  const cartUpgrade=document.getElementById('cartUpgrade');
 
   function show(el){ if(el) el.hidden=false; }
   function hide(el){ if(el) el.hidden=true; }
+  function money(v){ return '$'+Number(v).toFixed(0); }
 
-  document.querySelectorAll('[data-audience]').forEach(btn => btn.addEventListener('click', () => {
-    audience = btn.dataset.audience;
-    mode = '';
+  document.querySelectorAll('[data-audience]').forEach(btn=>btn.addEventListener('click',()=>{
+    audience=btn.dataset.audience;
     document.querySelectorAll('[data-audience]').forEach(b=>b.classList.toggle('selected',b===btn));
-    document.getElementById('modeHeading').textContent = 'How would you like to shop as a ' + audienceLabels[audience] + '?';
-    show(modeStep); hide(nicheStep); hide(guidedQuestions); hide(shopResults);
-    modeStep.scrollIntoView({behavior:'smooth',block:'center'});
-  }));
-
-  document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('click', () => {
-    mode = btn.dataset.mode;
-    document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('selected',b===btn));
+    if(audience==='brand'){
+      document.getElementById('custom')?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
     show(nicheStep);
-    if(mode==='guided'){ show(guidedQuestions); hide(shopResults); }
-    else { hide(guidedQuestions); renderBrowse(); }
     nicheStep.scrollIntoView({behavior:'smooth',block:'center'});
   }));
 
-  nicheSelect?.addEventListener('change', e => {
-    currentNiche = e.target.value;
-    if(mode==='browse') renderBrowse();
+  nicheSelect?.addEventListener('change',()=>{
+    currentNiche=nicheSelect.value;
+    selectedProduct=null;
+    orderDraft=null;
+    hide(briefStep);
+    if(currentNiche){
+      renderProducts();
+      show(productStep);
+      productStep.scrollIntoView({behavior:'smooth',block:'center'});
+    }else{
+      hide(productStep);
+    }
   });
 
-  document.getElementById('recommendBtn')?.addEventListener('click', () => {
-    currentNiche = nicheSelect.value;
-    const need = document.getElementById('needSelect').value;
-    const goal = document.getElementById('goalSelect').value;
-    if(!currentNiche){ alert('Choose a niche first.'); return; }
-    if(!need){ alert('Choose what you need help with.'); return; }
-    currentNeed = need;
-    currentGoal = goal;
-    renderRecommendations(need);
-  });
-
-  document.getElementById('changePathBtn')?.addEventListener('click', () => {
-    hide(shopResults); hide(guidedQuestions); hide(nicheStep); hide(modeStep);
-    audience='';mode='';currentNiche='';currentNeed='';currentGoal='';nicheSelect.value='';
-    document.querySelectorAll('.shop-choice').forEach(b=>b.classList.remove('selected'));
-    audienceStep.scrollIntoView({behavior:'smooth',block:'center'});
-  });
-
-  function cardsForAudience(){
-    return catalog.filter(p=>p.audiences.includes(audience));
+  function renderProducts(){
+    productGrid.innerHTML='';
+    catalog.filter(p=>p.audiences.includes(audience)).forEach(product=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='product-choice';
+      button.innerHTML='<span class="product-choice-label">'+product.label+'</span><strong>'+product.name+'</strong><span>'+product.desc+'</span><b>'+money(product.price)+'</b>';
+      button.addEventListener('click',()=>selectProduct(product,button));
+      productGrid.appendChild(button);
+    });
   }
 
-  function renderBrowse(){
-    if(!audience) return;
-    show(shopResults);
-    document.getElementById('resultsEyebrow').textContent = audienceLabels[audience].toUpperCase() + ' SHOP';
-    document.getElementById('resultsTitle').textContent = 'Browse what’s on offer.';
-    document.getElementById('resultsNote').textContent = currentNiche ? 'Current niche: '+currentNiche+'. Change it above before adding an item for another niche.' : 'Choose a niche above before adding an item. You can change it for each item you add.';
-    renderCards(cardsForAudience());
+  function selectProduct(product,button){
+    selectedProduct=product;
+    orderDraft=null;
+    document.querySelectorAll('.product-choice').forEach(b=>b.classList.toggle('selected',b===button));
+    briefSummary.innerHTML='<strong>'+product.name+'</strong><span>'+currentNiche+'</span>';
+    document.getElementById('briefHeading').textContent='Tell us what your '+product.name.toLowerCase()+' is about.';
+    renderAdaptiveFields(product);
+    show(briefStep);
+    briefStep.scrollIntoView({behavior:'smooth',block:'start'});
   }
 
-  function renderRecommendations(need){
-    const byNeed={
-      hooks:['hooks','what_to_say','storyboard'],
-      ideas:['content_starter','hooks','storyboard'],
-      image:['image_words','storyboard','video_reel'],
-      video:['video_reel','storyboard_showcase','hook'],
-      say:['what_to_say','hooks','storyboard'],
-      storyboard:['storyboard','storyboard_showcase','video_reel'],
-      product:['unboxing','storyboard_showcase','video_reel'],
-      ad:['hook','storyboard_showcase','video_reel'],
-      unsure:['content_starter','hooks','storyboard']
+  function platformField(){
+    return '<fieldset class="brief-field full"><legend>Where will you use it?</legend><div class="brief-options">'+
+      ['TikTok','Instagram / Reels','Facebook / Meta','YouTube Shorts','Other'].map((p,i)=>'<label><input type="checkbox" name="platform" value="'+p+'"> '+p+'</label>').join('')+
+      '</div></fieldset>';
+  }
+
+  function ctaFields(){
+    return '<label class="brief-field">What should people do next?<input id="cta" type="text" placeholder="e.g. visit the website, book, follow, enquire"></label>'+
+      '<label class="brief-field">Approved link or destination<input id="destinationUrl" type="url" placeholder="Optional exact URL"></label>';
+  }
+
+  function assetField(){
+    return '<label class="brief-field full">Do you have photos, video or product assets we should use?'+
+      '<select id="assetStatus"><option value="">Choose one</option><option value="supplied_assets">Yes — I will supply assets</option><option value="supporting_visuals">I have some assets; supporting visuals are okay</option><option value="reference_only">My assets are for reference/context only</option><option value="mys_decide">No / let Make You Stop decide</option></select></label>';
+  }
+
+  function renderAdaptiveFields(product){
+    let html='';
+    if(['hooks','image','script','storyboard','showcase','video','unboxing'].includes(product.type)) html+=platformField();
+
+    if(['hooks','image','script','storyboard','showcase','video','unboxing'].includes(product.type)) html+=ctaFields();
+
+    if(['image','storyboard','showcase','video','unboxing'].includes(product.type)) html+=assetField();
+
+    if(product.type==='script'){
+      html+='<label class="brief-field full">How will you use the guidance?<select id="filmingPlan"><option value="">Choose one</option><option>Speaking to camera</option><option>Demonstrating something</option><option>Voiceover over visuals</option><option>A mix</option><option>Not sure — recommend what fits</option></select></label>';
+    }
+
+    if(product.type==='storyboard' || product.type==='showcase'){
+      html+='<label class="brief-field full">Are you planning to film/create this yourself?<select id="filmingPlan"><option value="">Choose one</option><option>Yes</option><option>No — someone else will create it</option><option>Not sure yet</option></select></label>';
+    }
+
+    if(product.type==='guide'){
+      html+='<label class="brief-field full">What should this guide help the reader do?<textarea id="guideOutcome" rows="2" placeholder="The outcome or result you want the reader to get"></textarea></label>'+
+        '<label class="brief-field full">Anything that must be included?<textarea id="mustInclude" rows="2" placeholder="Optional facts, sections, points or instructions"></textarea></label>'+
+        '<label class="brief-field full">Guide style<select id="templateKey"><option value="">Let Make You Stop choose</option><option value="7_day_plan">7-Day Plan</option><option value="beginner_guide">Beginner Guide</option><option value="checklist">Checklist / Quick Start</option><option value="how_to">How-To Guide</option><option value="mistakes">Mistakes to Avoid</option><option value="playbook">Playbook / Resource</option><option value="custom">Custom</option></select></label>';
+    }
+
+    adaptiveBrief.innerHTML=html;
+  }
+
+  function val(id){
+    const el=document.getElementById(id);
+    return el ? String(el.value||'').trim() : '';
+  }
+
+  function collectBrief(){
+    const promotionSubject=val('promotionSubject');
+    const brandSummary=val('brandSummary');
+    const keyMessage=val('keyMessage');
+    if(!promotionSubject || !brandSummary || !keyMessage){
+      alert('Please answer the three main brief questions first.');
+      return null;
+    }
+    const platforms=[...document.querySelectorAll('input[name="platform"]:checked')].map(x=>x.value);
+    return {
+      promotion_subject: promotionSubject,
+      brand_summary: brandSummary,
+      key_message: keyMessage,
+      platforms,
+      cta: val('cta'),
+      destination_url: val('destinationUrl'),
+      asset_status: val('assetStatus'),
+      filming_plan: val('filmingPlan'),
+      guide_outcome: val('guideOutcome'),
+      must_include: val('mustInclude'),
+      template_key: val('templateKey'),
+      extra_notes: val('extraNotes')
     };
-    let keys=byNeed[need]||[];
-    let products=cardsForAudience().filter(p=>keys.includes(p.key));
-    if(!products.length) products=cardsForAudience().slice(0,3);
-    show(shopResults);
-    document.getElementById('resultsEyebrow').textContent='RECOMMENDED FOR '+currentNiche.toUpperCase();
-    document.getElementById('resultsTitle').textContent='A small place to start.';
-    document.getElementById('resultsNote').textContent='You can choose one, add several, or switch to Browse to see everything for your path.';
-    renderCards(products);
   }
 
-  function renderCards(products){
-    grid.innerHTML='';
-    products.forEach(p=>{
-      const article=document.createElement('article');
-      article.className='product guided-product';
-      article.innerHTML=
-        '<p class="eyebrow">'+p.label+'</p>'+
-        '<div class="price">
-+p.price+(p.type==='monthly'?'<span class="per">/mo</span>':'')+'</div>'+
-        '<h3>'+p.name+'</h3>'+
-        '<p>'+p.desc+'</p>'+
-        '<ul class="included-list">'+p.includes.map(x=>'<li>'+x+'</li>').join('')+'</ul>'+
-        '<div class="free-bonus"><strong>Make You Stop Bonus</strong><span>'+p.bonus+'</span></div>'+
-        '<button class="add" type="button">Add to cart</button>';
-      article.querySelector('.add').addEventListener('click',()=>addToCart(p));
-      grid.appendChild(article);
-    });
-  }
-
-  function addToCart(product){
-    currentNiche=nicheSelect.value||currentNiche;
-    if(!currentNiche){ alert('Choose the niche for this item first.'); nicheSelect.focus(); return; }
-    const need = document.getElementById('needSelect')?.value || currentNeed || '';
-    const goal = document.getElementById('goalSelect')?.value || currentGoal || '';
-    cart.push({
-      id:Date.now()+Math.random(),
-      key:product.key,
-      name:product.name,
-      price:product.price,
+  document.getElementById('addBriefToCart')?.addEventListener('click',()=>{
+    if(!selectedProduct || !currentNiche || !audience) return;
+    const brief=collectBrief();
+    if(!brief) return;
+    orderDraft={
+      key:selectedProduct.key,
+      name:selectedProduct.name,
+      price:selectedProduct.price,
+      audience,
       niche:currentNiche,
-      audience:audience,
-      need:need,
-      goal:goal,
-      type:product.type
-    });
-    renderCart();
+      brief
+    };
+    renderOrder();
     openCart();
-  }
+  });
+
+  document.getElementById('changeProductBtn')?.addEventListener('click',()=>{
+    hide(briefStep);
+    selectedProduct=null;
+    document.querySelectorAll('.product-choice').forEach(b=>b.classList.remove('selected'));
+    productStep.scrollIntoView({behavior:'smooth',block:'center'});
+  });
 
   function openCart(){
-    cartDrawer.classList.add('open');
-    cartDrawer.setAttribute('aria-hidden','false');
-    cartBackdrop.hidden=false;
+    cartDrawer?.classList.add('open');
+    cartDrawer?.setAttribute('aria-hidden','false');
+    if(cartBackdrop) cartBackdrop.hidden=false;
     document.getElementById('cartButton')?.setAttribute('aria-expanded','true');
   }
   function closeCart(){
-    cartDrawer.classList.remove('open');
-    cartDrawer.setAttribute('aria-hidden','true');
-    cartBackdrop.hidden=true;
+    cartDrawer?.classList.remove('open');
+    cartDrawer?.setAttribute('aria-hidden','true');
+    if(cartBackdrop) cartBackdrop.hidden=true;
     document.getElementById('cartButton')?.setAttribute('aria-expanded','false');
   }
-
   document.getElementById('cartButton')?.addEventListener('click',openCart);
   document.getElementById('cartClose')?.addEventListener('click',closeCart);
   cartBackdrop?.addEventListener('click',closeCart);
 
-  function renderCart(){
-    cartCount.textContent=cart.length;
-    const total=cart.reduce((sum,i)=>sum+i.price,0);
-    cartTotal.textContent='
-+total;
-    checkoutPreview.disabled=cart.length===0;
-    checkoutPreview.style.opacity=cart.length?1:.55;
-    if(!cart.length){
-      cartItems.innerHTML='<p class="cart-empty">Your cart is empty.</p>';
-      hide(cartUpgrade); return;
+  function renderOrder(){
+    cartCount.textContent=orderDraft?'1':'0';
+    cartTotal.textContent=orderDraft?money(orderDraft.price):'$0';
+    checkoutButton.disabled=!orderDraft;
+    checkoutButton.style.opacity=orderDraft?1:.55;
+    hide(cartUpgrade);
+    if(!orderDraft){
+      cartItems.innerHTML='<p class="cart-empty">Your order is empty.</p>';
+      return;
     }
-    cartItems.innerHTML='';
-    cart.forEach(item=>{
-      const line=document.createElement('div');
-      line.className='cart-line';
-      const contextBits=[audienceLabels[item.audience],item.niche,item.goal].filter(Boolean);
-      line.innerHTML='<div><strong>'+item.name+'</strong><small>'+contextBits.join(' · ')+'</small><span>
-+item.price+'</span></div><button type="button">Remove</button>';
-      line.querySelector('button').addEventListener('click',()=>{cart=cart.filter(x=>x.id!==item.id);renderCart();});
-      cartItems.appendChild(line);
+    cartItems.innerHTML='<div class="cart-line"><div><strong>'+orderDraft.name+'</strong><small>'+orderDraft.niche+'</small><span>'+money(orderDraft.price)+'</span></div><button type="button" id="removeOrder">Remove</button></div>'+
+      '<div class="cart-brief-preview"><strong>Brief ready</strong><span>'+orderDraft.brief.promotion_subject+'</span></div>';
+    document.getElementById('removeOrder')?.addEventListener('click',()=>{orderDraft=null;renderOrder();});
+  }
+
+  async function createIntent(){
+    if(!orderDraft) throw new Error('Your order is empty.');
+    const response=await fetch('https://make-you-stop-upload.tripsdelivered.workers.dev/api/shop-intents',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        audience:orderDraft.audience,
+        niches:[orderDraft.niche],
+        product_key:orderDraft.key,
+        brief:orderDraft.brief,
+        source:'website'
+      })
     });
-    renderUpgrade(total);
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || !data.success) throw new Error(data.error||'Unable to prepare checkout.');
+    return data;
   }
 
-  function renderUpgrade(total){
-    let copy='', key='';
-    const keys=cart.map(i=>i.key);
-    if(keys.includes('hooks') && !keys.includes('storyboard')){
-      copy='<strong>Want to build from your hook?</strong><span>Add a Storyboard next so you can see how the idea could unfold before filming.</span>'; key='storyboard';
-    } else if(keys.includes('storyboard') && !keys.includes('storyboard_showcase')){
-      copy='<strong>See it before you film it.</strong><span>Add the Visual Showcase to turn the storyboard into a clearer visual direction.</span>'; key='storyboard_showcase';
-    } else if((keys.includes('storyboard_showcase')||keys.includes('unboxing')) && !keys.includes('video_reel')){
-      copy='<strong>Want the finished version?</strong><span>Turn this direction into a finished Video / Reel.</span>'; key='video_reel';
-    } else if(keys.filter(k=>k==='hooks').length>=2){
-      copy='<strong>You’re building a hook set.</strong><span>Keep adding only if you need them — larger-value hook options can be introduced after pricing tests.</span>';
-    } else if(total>=35 && audience==='creator' && !keys.includes('creator_monthly')){
-      copy='<strong>You are building a larger order.</strong><span>Before payment, Make You Stop can compare this cart with a bundle or monthly option and only suggest it if it genuinely saves you money.</span>';
-    } else {
-      copy='<strong>One useful next step — not a random add-on.</strong><span>Recommendations will follow what is actually in your cart and the niche attached to it.</span>';
+  checkoutButton?.addEventListener('click',async()=>{
+    if(!orderDraft) return;
+    const paymentLink=stripeCheckoutLinks[orderDraft.key];
+    if(!paymentLink){
+      checkoutStatus.textContent='This product is ready for its Stripe Payment Link mapping before checkout can go live.';
+      return;
     }
-    cartUpgrade.innerHTML=copy+(key?'<button type="button" id="upgradeAdd">Add suggested item</button>':'');
-    show(cartUpgrade);
-    if(key){
-      document.getElementById('upgradeAdd')?.addEventListener('click',()=>{
-        const p=catalog.find(x=>x.key===key && x.audiences.includes(audience));
-        if(p) addToCart(p);
-      });
+    checkoutButton.disabled=true;
+    checkoutStatus.textContent='Preparing secure checkout…';
+    try{
+      const intent=await createIntent();
+      const url=new URL(paymentLink);
+      url.searchParams.set('client_reference_id',intent.intent_id);
+      window.location.href=url.toString();
+    }catch(err){
+      checkoutStatus.textContent=err.message||'Unable to prepare checkout.';
+      checkoutButton.disabled=false;
     }
-  }
+  });
 
-  checkoutPreview?.addEventListener('click',()=>alert('Preview only. Stripe checkout will be connected after the customer experience and final unit economics are approved.'));
+  renderOrder();
 })();
 </script>
 </body></html>
