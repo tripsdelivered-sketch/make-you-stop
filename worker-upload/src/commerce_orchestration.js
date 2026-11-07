@@ -857,7 +857,7 @@ export async function startIntakeFromCheckout(request, env, tallyBaseUrl) {
   }
 
   const job = await env.DB.prepare(`
-    SELECT job_id, product_key
+    SELECT job_id, product_key, status, intake_status
     FROM job_context
     WHERE order_id = ? AND job_role = 'primary'
     ORDER BY sequence_index ASC
@@ -867,6 +867,20 @@ export async function startIntakeFromCheckout(request, env, tallyBaseUrl) {
   if (!job?.job_id) {
     return new Response("<h1>Your order exists, but the creative job is not ready yet.</h1>", {
       status: 409,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
+    });
+  }
+
+  if (job.status === "production_ready" && job.intake_status === "complete") {
+    return new Response(`<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your creative is underway</title></head>
+<body style="font-family:Arial,sans-serif;max-width:620px;margin:80px auto;padding:0 20px">
+<h1>You’re all set.</h1>
+<p>We have your payment and the brief needed to create your order. Make You Stop can now move it into production.</p>
+<p>You do not need to complete another form.</p>
+</body></html>`, {
+      status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
     });
   }
