@@ -1,4 +1,4 @@
-import { resolveProduct, upsertStripeProductMapping, createShoppingIntent, expandOrder, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, productionContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
+import { resolveProduct, upsertStripeProductMapping, createShoppingIntent, expandOrder, startIntakeFromCheckout, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, productionContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
 import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait, canvaExportStore } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
@@ -818,6 +818,10 @@ export default {
       const expandOrderMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/expand$/);
       if (request.method === "POST" && expandOrderMatch) {
         return expandOrder(request, env, expandOrderMatch[1]);
+      }
+
+      if (request.method === "GET" && path === "/intake-start") {
+        return startIntakeFromCheckout(request, env, "https://tally.so/r/aQX80q");
       }
 
       if (request.method === "POST" && path === "/api/intake-tokens") {
