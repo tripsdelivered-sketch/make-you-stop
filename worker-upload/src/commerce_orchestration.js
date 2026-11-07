@@ -219,6 +219,23 @@ async function ensureTables(env) {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_intake_submissions_job ON intake_submissions(job_id, created_at)"),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS shopping_intents (
+      intent_id TEXT PRIMARY KEY,
+      audience TEXT,
+      niches_json TEXT NOT NULL DEFAULT '[]',
+      needs_json TEXT NOT NULL DEFAULT '[]',
+      goal TEXT,
+      selected_product_key TEXT NOT NULL,
+      source TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      order_id TEXT,
+      checkout_session_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT
+    )`),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_shopping_intents_order ON shopping_intents(order_id)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_shopping_intents_checkout ON shopping_intents(checkout_session_id)"),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS stripe_ingress_events (
       event_id TEXT PRIMARY KEY,
       event_type TEXT,
@@ -360,6 +377,118 @@ async function resolveManifest(env, body) {
   };
 }
 
+
+function cleanText(value, max = 160) {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return text && text.length <= max ? text : null;
+}
+
+function cleanTextList(value, maxItems = 8, maxLength = 120) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0 && item.length <= maxLength)
+    .slice(0, maxItems);
+}
+
+export async function createShoppingIntent(request, env) {
+  await ensureTables(env);
+
+  const body = await readJson(request);
+  if (!body || !safeId(body.product_key)) {
+    return json({ success: false, error: "Invalid product_key" }, 400);
+  }
+
+  const manifest = await resolveManifest(env, { product_key: body.product_key });
+  if (!manifest) return json({ success: false, error: "Unknown product_key" }, 404);
+
+  const allowedAudiences = new Set(["creator", "small-business", "brand"]);
+  const audience = allowedAudiences.has(body.audience) ? body.audience : null;
+  const niches = cleanTextList(body.niches ?? (body.niche ? [body.niche] : []), 5, 80);
+  const needs = cleanTextList(body.needs ?? (body.need ? [body.need] : []), 8, 120);
+  const goal = cleanText(body.goal, 160);
+  const source = cleanText(body.source, 80) || "website";
+
+  const intentId = `intent_${token(18)}`;
+  const expiresAt = expiresAfterHours(24);
+
+  await env.DB.prepare(`
+    INSERT INTO shopping_intents (
+      intent_id, audience, niches_json, needs_json, goal,
+      selected_product_key, source, active, created_at, expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?)
+  `).bind(
+    intentId,
+    audience,
+    JSON.stringify(niches),
+    JSON.stringify(needs),
+    goal,
+    manifest.product_key,
+    source,
+    expiresAt
+  ).run();
+
+  return json({
+    success: true,
+    intent_id: intentId,
+    product_key: manifest.product_key,
+    expires_at: expiresAt
+  });
+}
+
+async function attachShoppingIntent(env, body, orderId, resolved) {
+  const session = body?.checkout_session && typeof body.checkout_session === "object"
+    ? body.checkout_session
+    : body?.session && typeof body.session === "object"
+      ? body.session
+      : null;
+
+  const intentId =
+    (safeId(body?.shopping_intent_id) && body.shopping_intent_id) ||
+    (safeId(body?.client_reference_id) && body.client_reference_id) ||
+    (safeId(session?.client_reference_id) && session.client_reference_id) ||
+    null;
+
+  if (!intentId) return null;
+
+  const row = await env.DB.prepare(`
+    SELECT *
+    FROM shopping_intents
+    WHERE intent_id = ? AND active = 1
+  `).bind(intentId).first();
+
+  if (!row) return null;
+  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return null;
+  if (row.selected_product_key !== resolved.product_key) {
+    throw new Error("Shopping intent product does not match purchased product");
+  }
+
+  const checkoutSessionId =
+    cleanText(body?.checkout_session_id, 200) ||
+    cleanText(session?.id, 200) ||
+    null;
+
+  await env.DB.prepare(`
+    UPDATE shopping_intents
+    SET order_id = ?,
+        checkout_session_id = ?,
+        consumed_at = COALESCE(consumed_at, datetime('now'))
+    WHERE intent_id = ?
+  `).bind(orderId, checkoutSessionId, intentId).run();
+
+  return {
+    intent_id: row.intent_id,
+    audience: row.audience || null,
+    niches: JSON.parse(row.niches_json || "[]"),
+    needs: JSON.parse(row.needs_json || "[]"),
+    goal: row.goal || null,
+    selected_product_key: row.selected_product_key,
+    source: row.source || null
+  };
+}
+
 export async function resolveProduct(request, env) {
   const authError = auth(request, env);
   if (authError) return authError;
@@ -479,6 +608,13 @@ export async function expandOrder(request, env, orderId) {
   const resolved = await resolveManifest(env, body);
   if (!resolved) return json({ success: false, error: "No active product manifest matches this purchase" }, 404);
 
+  let shoppingIntent = null;
+  try {
+    shoppingIntent = await attachShoppingIntent(env, body, orderId, resolved);
+  } catch (error) {
+    return json({ success: false, error: error.message || "Invalid shopping intent" }, 409);
+  }
+
   const requestType = safeId(body.request_type) ? body.request_type : "new";
   const jobMap = new Map();
   const deliverableMap = new Map();
@@ -580,6 +716,7 @@ export async function expandOrder(request, env, orderId) {
     display_name: resolved.display_name,
     manifest_version: resolved.manifest_version,
     expected_deliverables: expectedCount,
+    shopping_intent: shoppingIntent,
     jobs: created
   });
 }
@@ -780,6 +917,25 @@ export async function productionContext(request, env, jobId) {
 
   const intakePayload = intake ? JSON.parse(intake.payload_json) : null;
 
+  const intent = await env.DB.prepare(`
+    SELECT intent_id, audience, niches_json, needs_json, goal, selected_product_key, source, created_at
+    FROM shopping_intents
+    WHERE order_id = ?
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).bind(job.order_id).first();
+
+  const shoppingIntent = intent ? {
+    intent_id: intent.intent_id,
+    audience: intent.audience || null,
+    niches: JSON.parse(intent.niches_json || "[]"),
+    needs: JSON.parse(intent.needs_json || "[]"),
+    goal: intent.goal || null,
+    selected_product_key: intent.selected_product_key,
+    source: intent.source || null,
+    created_at: intent.created_at
+  } : null;
+
   return json({
     success: true,
     contract: "production_context_v1",
@@ -807,6 +963,7 @@ export async function productionContext(request, env, jobId) {
       customer_email: order?.customer_email || null,
       product_selected: order?.product_selected || null
     },
+    shopping_intent: shoppingIntent,
     intake: intake ? {
       submission_id: intake.submission_id,
       created_at: intake.created_at,
@@ -894,6 +1051,7 @@ export async function commerceStatus(request, env) {
     contracts: {
       product_resolution: true,
       stripe_mapping: true,
+      shopping_intent: true,
       order_expansion: true,
       intake_tokens: true,
       intake_submission: true,
