@@ -301,8 +301,25 @@ async function ensureTables(env) {
   }
 
   const shoppingIntentCols = await tableColumns(env, "shopping_intents");
-  if (!shoppingIntentCols.has("brief_json")) {
-    await env.DB.prepare("ALTER TABLE shopping_intents ADD COLUMN brief_json TEXT NOT NULL DEFAULT '{}'").run();
+  const shoppingIntentMigrations = [
+    ["audience", "TEXT"],
+    ["niches_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["needs_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["goal", "TEXT"],
+    ["brief_json", "TEXT NOT NULL DEFAULT '{}'"],
+    ["selected_product_key", "TEXT"],
+    ["source", "TEXT"],
+    ["active", "INTEGER NOT NULL DEFAULT 1"],
+    ["order_id", "TEXT"],
+    ["checkout_session_id", "TEXT"],
+    ["created_at", "TEXT"],
+    ["expires_at", "TEXT"],
+    ["consumed_at", "TEXT"]
+  ];
+  for (const [column, definition] of shoppingIntentMigrations) {
+    if (!shoppingIntentCols.has(column)) {
+      await env.DB.prepare(`ALTER TABLE shopping_intents ADD COLUMN ${column} ${definition}`).run();
+    }
   }
 
   for (const mapping of SEEDED_STRIPE_MAPPINGS) {
@@ -485,9 +502,10 @@ function cleanBrief(value) {
 }
 
 export async function createShoppingIntent(request, env) {
-  await ensureTables(env);
+  try {
+    await ensureTables(env);
 
-  const body = await readJson(request);
+    const body = await readJson(request);
   if (!body || !safeId(body.product_key)) {
     return publicJson({ success: false, error: "Invalid product_key" }, 400);
   }
@@ -523,12 +541,20 @@ export async function createShoppingIntent(request, env) {
     expiresAt
   ).run();
 
-  return publicJson({
-    success: true,
-    intent_id: intentId,
-    product_key: manifest.product_key,
-    expires_at: expiresAt
-  });
+    return publicJson({
+      success: true,
+      intent_id: intentId,
+      product_key: manifest.product_key,
+      expires_at: expiresAt
+    });
+  } catch (error) {
+    console.error("createShoppingIntent failed", error);
+    return publicJson({
+      success: false,
+      error: "Unable to prepare checkout",
+      detail: String(error?.message || error || "Unknown error").slice(0, 240)
+    }, 500);
+  }
 }
 
 async function attachShoppingIntent(env, body, orderId, resolved) {
