@@ -236,6 +236,7 @@ async function ensureTables(env) {
       niches_json TEXT NOT NULL DEFAULT '[]',
       needs_json TEXT NOT NULL DEFAULT '[]',
       goal TEXT,
+      brief_json TEXT NOT NULL DEFAULT '{}',
       selected_product_key TEXT NOT NULL,
       source TEXT,
       active INTEGER NOT NULL DEFAULT 1,
@@ -262,6 +263,11 @@ async function ensureTables(env) {
   const jobContextCols = await tableColumns(env, "job_context");
   if (!jobContextCols.has("deliverable_id")) {
     await env.DB.prepare("ALTER TABLE job_context ADD COLUMN deliverable_id TEXT").run();
+  }
+
+  const shoppingIntentCols = await tableColumns(env, "shopping_intents");
+  if (!shoppingIntentCols.has("brief_json")) {
+    await env.DB.prepare("ALTER TABLE shopping_intents ADD COLUMN brief_json TEXT NOT NULL DEFAULT '{}'").run();
   }
 
   for (const manifest of CORE_MANIFESTS) {
@@ -404,6 +410,34 @@ function cleanTextList(value, maxItems = 8, maxLength = 120) {
     .slice(0, maxItems);
 }
 
+function cleanBrief(value) {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const out = {};
+  const textFields = [
+    "promotion_subject",
+    "brand_summary",
+    "key_message",
+    "cta",
+    "destination_type",
+    "destination_url",
+    "action_instruction",
+    "extra_notes",
+    "audience_detail",
+    "guide_outcome",
+    "must_include",
+    "filming_plan",
+    "asset_status",
+    "template_key"
+  ];
+  for (const key of textFields) {
+    const cleaned = cleanText(input[key], key === "extra_notes" || key === "must_include" ? 2000 : 800);
+    if (cleaned) out[key] = cleaned;
+  }
+  const platforms = cleanTextList(input.platforms, 8, 80);
+  if (platforms.length) out.platforms = platforms;
+  return out;
+}
+
 export async function createShoppingIntent(request, env) {
   await ensureTables(env);
 
@@ -420,6 +454,7 @@ export async function createShoppingIntent(request, env) {
   const niches = cleanTextList(body.niches ?? (body.niche ? [body.niche] : []), 5, 80);
   const needs = cleanTextList(body.needs ?? (body.need ? [body.need] : []), 8, 120);
   const goal = cleanText(body.goal, 160);
+  const brief = cleanBrief(body.brief);
   const source = cleanText(body.source, 80) || "website";
 
   const intentId = `intent_${token(18)}`;
@@ -427,15 +462,16 @@ export async function createShoppingIntent(request, env) {
 
   await env.DB.prepare(`
     INSERT INTO shopping_intents (
-      intent_id, audience, niches_json, needs_json, goal,
+      intent_id, audience, niches_json, needs_json, goal, brief_json,
       selected_product_key, source, active, created_at, expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?)
   `).bind(
     intentId,
     audience,
     JSON.stringify(niches),
     JSON.stringify(needs),
     goal,
+    JSON.stringify(brief),
     manifest.product_key,
     source,
     expiresAt
@@ -495,6 +531,7 @@ async function attachShoppingIntent(env, body, orderId, resolved) {
     niches: JSON.parse(row.niches_json || "[]"),
     needs: JSON.parse(row.needs_json || "[]"),
     goal: row.goal || null,
+    brief: JSON.parse(row.brief_json || "{}"),
     selected_product_key: row.selected_product_key,
     source: row.source || null
   };
@@ -1003,7 +1040,7 @@ export async function productionContext(request, env, jobId) {
   const intakePayload = intake ? JSON.parse(intake.payload_json) : null;
 
   const intent = await env.DB.prepare(`
-    SELECT intent_id, audience, niches_json, needs_json, goal, selected_product_key, source, created_at
+    SELECT intent_id, audience, niches_json, needs_json, goal, brief_json, selected_product_key, source, created_at
     FROM shopping_intents
     WHERE order_id = ?
     ORDER BY created_at DESC
@@ -1016,6 +1053,7 @@ export async function productionContext(request, env, jobId) {
     niches: JSON.parse(intent.niches_json || "[]"),
     needs: JSON.parse(intent.needs_json || "[]"),
     goal: intent.goal || null,
+    brief: JSON.parse(intent.brief_json || "{}"),
     selected_product_key: intent.selected_product_key,
     source: intent.source || null,
     created_at: intent.created_at
