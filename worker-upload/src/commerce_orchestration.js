@@ -80,7 +80,9 @@ const SEEDED_STRIPE_MAPPINGS = [
   { mapping_key: "price:price_1UZ94DBG3Bv4a9Nr4bM8aB6X", product_key: "image_words" },
   { mapping_key: "product:prod_VaJhqJY7VC3kug", product_key: "image_words" },
   { mapping_key: "price:price_1UZ96CBG3Bv4a9NrzvsxrxUK", product_key: "what_to_say_guide" },
-  { mapping_key: "product:prod_VaJjS6v1FnzCe6", product_key: "what_to_say_guide" }
+  { mapping_key: "product:prod_VaJjS6v1FnzCe6", product_key: "what_to_say_guide" },
+  { mapping_key: "price:price_1UZ97oBG3Bv4a9Nr48BGaQFc", product_key: "storyboard" },
+  { mapping_key: "product:prod_VaJlrDGGKFy1w1", product_key: "storyboard" }
 ];
 
 const CORE_MANIFESTS = [
