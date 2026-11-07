@@ -641,6 +641,55 @@ async function updateOrderManifest(env, orderId, resolved, expectedCount) {
   await env.DB.prepare(`UPDATE orders SET ${sets.join(", ")} WHERE order_id = ?`).bind(...params).run();
 }
 
+
+function landingBriefCanStartProduction(productKey, brief) {
+  if (!brief || typeof brief !== "object") return false;
+  const hasCore = Boolean(brief.promotion_subject && brief.brand_summary && brief.key_message);
+  if (!hasCore) return false;
+  return new Set(["hooks", "what_to_say_guide"]).has(productKey);
+}
+
+async function applyLandingBriefAsIntake(env, orderId, jobs, shoppingIntent) {
+  if (!shoppingIntent || !landingBriefCanStartProduction(shoppingIntent.selected_product_key, shoppingIntent.brief)) {
+    return { applied: false };
+  }
+
+  const primary = (jobs || []).find((job) => job.job_role === "primary");
+  if (!primary) return { applied: false };
+
+  const submissionId = await stableId("intake", orderId + "|" + primary.job_id + "|storefront");
+  const payload = {
+    source: "storefront_pre_payment_brief",
+    audience: shoppingIntent.audience || null,
+    niches: shoppingIntent.niches || [],
+    needs: shoppingIntent.needs || [],
+    goal: shoppingIntent.goal || null,
+    product_key: shoppingIntent.selected_product_key,
+    brief: shoppingIntent.brief || {}
+  };
+
+  await env.DB.prepare(`
+    INSERT INTO intake_submissions (submission_id, token_hash, order_id, job_id, payload_json, created_at)
+    VALUES (?, 'storefront', ?, ?, ?, datetime('now'))
+    ON CONFLICT(submission_id) DO UPDATE SET
+      payload_json=excluded.payload_json
+  `).bind(submissionId, orderId, primary.job_id, JSON.stringify(payload)).run();
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET intake_status='complete', status='production_ready', updated_at=datetime('now')
+    WHERE job_id=?
+  `).bind(primary.job_id).run();
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='production_ready', updated_at=datetime('now')
+    WHERE parent_job_id=? AND intake_status='shared_parent'
+  `).bind(primary.job_id).run();
+
+  return { applied: true, submission_id: submissionId, job_id: primary.job_id };
+}
+
 export async function expandOrder(request, env, orderId) {
   const authError = auth(request, env);
   if (authError) return authError;
@@ -739,6 +788,8 @@ export async function expandOrder(request, env, orderId) {
   const expectedCount = created.filter((x) => x.counts_toward_expected === 1).length;
   await updateOrderManifest(env, orderId, resolved, expectedCount);
 
+  const storefrontIntake = await applyLandingBriefAsIntake(env, orderId, created, shoppingIntent);
+
   if (safeId(body.stripe_event_id)) {
     await env.DB.prepare(`
       INSERT INTO stripe_ingress_events (event_id, event_type, checkout_session_id, product_key, order_id, status, created_at, processed_at)
@@ -765,6 +816,7 @@ export async function expandOrder(request, env, orderId) {
     manifest_version: resolved.manifest_version,
     expected_deliverables: expectedCount,
     shopping_intent: shoppingIntent,
+    storefront_intake: storefrontIntake,
     jobs: created
   });
 }
