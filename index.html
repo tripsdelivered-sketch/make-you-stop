@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function () {
 (function(){
   const catalog = [
     {key:'content_starter', audiences:['creator'], name:'Content Starter', price:9, label:'DIY starter', desc:'A low-cost mini guide when you want practical direction first.', bonus:'Includes a small personalised next-step suggestion.', type:'education', includes:['Mini content guide','Hook + CTA frameworks','Timing + pacing help','DIY checklist']},
-    {key:'hook', audiences:['creator','small-business'], name:'1 Personalised Hook', price:3, label:'Easy first try', desc:'One tailored opening built around your niche, audience and goal.', bonus:'Free bonus: CTA + caption starter + quick usage note.', type:'hook', includes:['1 personalised hook','Tailored to your niche','CTA suggestion','Caption starter']},
+    {key:'hooks', audiences:['creator','small-business'], name:'1 Personalised Hook', price:3, label:'Easy first try', desc:'One tailored opening built around your niche, audience and goal.', bonus:'Free bonus: CTA + caption starter + quick usage note.', type:'hook', includes:['1 personalised hook','Tailored to your niche','CTA suggestion','Caption starter']},
     {key:'image_words', audiences:['creator','small-business'], name:'1 Image / Words Creative', price:9, label:'Finished creative', desc:'One finished static social creative built around a clear story or message.', bonus:'Free bonus: caption + CTA + topic suggestions.', type:'image', includes:['1 finished creative','Social-first text treatment','Caption direction','CTA direction']},
     {key:'what_to_say', audiences:['creator','small-business'], name:'1 What to Say Guide', price:9, label:'Say it clearly', desc:'One clear speaking/content direction when you know the idea but not the words.', bonus:'Free bonus: opening hook + pacing tip + CTA.', type:'say', includes:['1 speaking direction','Hook starter','Pacing guidance','CTA direction']},
     {key:'storyboard', audiences:['creator','small-business'], name:'1 Storyboard Direction', price:12, label:'Plan before filming', desc:'Map one social story before you film it.', bonus:'Free bonus: first-shot tip + filming note + CTA.', type:'storyboard', includes:['1 custom concept','Hook + emotional angle','5-stage story flow','Visual direction + CTA']},
@@ -400,6 +400,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let audience = '';
   let mode = '';
   let currentNiche = '';
+  let currentNeed = '';
+  let currentGoal = '';
   let cart = [];
 
   const audienceStep = document.getElementById('audienceStep');
@@ -448,14 +450,17 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('recommendBtn')?.addEventListener('click', () => {
     currentNiche = nicheSelect.value;
     const need = document.getElementById('needSelect').value;
+    const goal = document.getElementById('goalSelect').value;
     if(!currentNiche){ alert('Choose a niche first.'); return; }
     if(!need){ alert('Choose what you need help with.'); return; }
+    currentNeed = need;
+    currentGoal = goal;
     renderRecommendations(need);
   });
 
   document.getElementById('changePathBtn')?.addEventListener('click', () => {
     hide(shopResults); hide(guidedQuestions); hide(nicheStep); hide(modeStep);
-    audience='';mode='';currentNiche='';nicheSelect.value='';
+    audience='';mode='';currentNiche='';currentNeed='';currentGoal='';nicheSelect.value='';
     document.querySelectorAll('.shop-choice').forEach(b=>b.classList.remove('selected'));
     audienceStep.scrollIntoView({behavior:'smooth',block:'center'});
   });
@@ -475,15 +480,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function renderRecommendations(need){
     const byNeed={
-      hooks:['hook','what_to_say','storyboard'],
-      ideas:['content_starter','hook','storyboard'],
+      hooks:['hooks','what_to_say','storyboard'],
+      ideas:['content_starter','hooks','storyboard'],
       image:['image_words','storyboard','video_reel'],
       video:['video_reel','storyboard_showcase','hook'],
-      say:['what_to_say','hook','storyboard'],
+      say:['what_to_say','hooks','storyboard'],
       storyboard:['storyboard','storyboard_showcase','video_reel'],
       product:['unboxing','storyboard_showcase','video_reel'],
       ad:['hook','storyboard_showcase','video_reel'],
-      unsure:['content_starter','hook','storyboard']
+      unsure:['content_starter','hooks','storyboard']
     };
     let keys=byNeed[need]||[];
     let products=cardsForAudience().filter(p=>keys.includes(p.key));
@@ -517,7 +522,19 @@ document.addEventListener('DOMContentLoaded', function () {
   function addToCart(product){
     currentNiche=nicheSelect.value||currentNiche;
     if(!currentNiche){ alert('Choose the niche for this item first.'); nicheSelect.focus(); return; }
-    cart.push({id:Date.now()+Math.random(),key:product.key,name:product.name,price:product.price,niche:currentNiche,audience:audience,type:product.type});
+    const need = document.getElementById('needSelect')?.value || currentNeed || '';
+    const goal = document.getElementById('goalSelect')?.value || currentGoal || '';
+    cart.push({
+      id:Date.now()+Math.random(),
+      key:product.key,
+      name:product.name,
+      price:product.price,
+      niche:currentNiche,
+      audience:audience,
+      need:need,
+      goal:goal,
+      type:product.type
+    });
     renderCart();
     openCart();
   }
@@ -554,7 +571,8 @@ document.addEventListener('DOMContentLoaded', function () {
     cart.forEach(item=>{
       const line=document.createElement('div');
       line.className='cart-line';
-      line.innerHTML='<div><strong>'+item.name+'</strong><small>'+audienceLabels[item.audience]+' · '+item.niche+'</small><span>
+      const contextBits=[audienceLabels[item.audience],item.niche,item.goal].filter(Boolean);
+      line.innerHTML='<div><strong>'+item.name+'</strong><small>'+contextBits.join(' · ')+'</small><span>
 +item.price+'</span></div><button type="button">Remove</button>';
       line.querySelector('button').addEventListener('click',()=>{cart=cart.filter(x=>x.id!==item.id);renderCart();});
       cartItems.appendChild(line);
@@ -565,13 +583,13 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderUpgrade(total){
     let copy='', key='';
     const keys=cart.map(i=>i.key);
-    if(keys.includes('hook') && !keys.includes('storyboard')){
+    if(keys.includes('hooks') && !keys.includes('storyboard')){
       copy='<strong>Want to build from your hook?</strong><span>Add a Storyboard next so you can see how the idea could unfold before filming.</span>'; key='storyboard';
     } else if(keys.includes('storyboard') && !keys.includes('storyboard_showcase')){
       copy='<strong>See it before you film it.</strong><span>Add the Visual Showcase to turn the storyboard into a clearer visual direction.</span>'; key='storyboard_showcase';
     } else if((keys.includes('storyboard_showcase')||keys.includes('unboxing')) && !keys.includes('video_reel')){
       copy='<strong>Want the finished version?</strong><span>Turn this direction into a finished Video / Reel.</span>'; key='video_reel';
-    } else if(keys.filter(k=>k==='hook').length>=2){
+    } else if(keys.filter(k=>k==='hooks').length>=2){
       copy='<strong>You’re building a hook set.</strong><span>Keep adding only if you need them — larger-value hook options can be introduced after pricing tests.</span>';
     } else if(total>=35 && audience==='creator' && !keys.includes('creator_monthly')){
       copy='<strong>You are building a larger order.</strong><span>Before payment, Make You Stop can compare this cart with a bundle or monthly option and only suggest it if it genuinely saves you money.</span>';
