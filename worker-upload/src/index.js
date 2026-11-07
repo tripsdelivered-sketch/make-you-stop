@@ -815,24 +815,74 @@ button:disabled{opacity:.6;cursor:not-allowed}.note{font-size:14px;color:#555;ma
 <label>What should people do next?<input id="cta" value="Visit the website and explore the creative options"></label>
 <label>Approved link or destination<input id="url" value="https://makeyoustop.com"></label>
 <label>Anything else you'd like us to know?<textarea id="notes" rows="3">Keep the hooks clear, human and suitable for TikTok and Instagram Reels.</textarea></label>
-<button id="go">Continue to Stripe Sandbox</button>
+<form method="POST" action="/hook-pack-checkout" id="hookCheckoutForm">
+<input type="hidden" name="promotion_subject" id="f_promotion">
+<input type="hidden" name="brand_summary" id="f_brand">
+<input type="hidden" name="key_message" id="f_message">
+<input type="hidden" name="platforms" id="f_platforms">
+<input type="hidden" name="cta" id="f_cta">
+<input type="hidden" name="destination_url" id="f_url">
+<input type="hidden" name="extra_notes" id="f_notes">
+<button id="go" type="submit">Continue to Stripe Sandbox</button>
+</form>
 <div id="status" class="status">Ready.</div>
 <div class="note">No real money is used. This creates the shopping intent first, then opens the existing Hook Pack Stripe Sandbox checkout.</div>
 </div>
 <script>
-const checkout='https://buy.stripe.com/test_14A00i1Q1azJ2YE5b6fMA02';
 const $=s=>document.querySelector(s);
-document.querySelector('#go').addEventListener('click',async()=>{
- const btn=$('#go'),status=$('#status');btn.disabled=true;status.textContent='Preparing secure checkout…';
- const brief={promotion_subject:$('#promotion').value.trim(),brand_summary:$('#brand').value.trim(),key_message:$('#message').value.trim(),platforms:[...document.querySelectorAll('input[name=platform]:checked')].map(x=>x.value),cta:$('#cta').value.trim(),destination_url:$('#url').value.trim(),extra_notes:$('#notes').value.trim()};
- try{
-  const r=await fetch('/api/shop-intents',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audience:'creator',niches:['Creator / Personal Brand'],product_key:'hooks',brief,source:'website'})});
-  const data=await r.json().catch(()=>({}));if(!r.ok||!data.success)throw new Error(data.detail?`${data.error||'Unable to prepare checkout'} — ${data.detail}`:(data.error||'Unable to prepare checkout'));
-  const u=new URL(checkout);u.searchParams.set('client_reference_id',data.intent_id);location.href=u.toString();
- }catch(e){status.textContent=e.message||'Unable to prepare checkout';btn.disabled=false;}
+document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
+  $('#status').textContent='Preparing secure checkout…';
+  $('#go').disabled=true;
+  $('#f_promotion').value=$('#promotion').value.trim();
+  $('#f_brand').value=$('#brand').value.trim();
+  $('#f_message').value=$('#message').value.trim();
+  $('#f_platforms').value=[...document.querySelectorAll('input[name=platform]:checked')].map(x=>x.value).join('|');
+  $('#f_cta').value=$('#cta').value.trim();
+  $('#f_url').value=$('#url').value.trim();
+  $('#f_notes').value=$('#notes').value.trim();
 });
 </script>
 </body></html>`);
+      }
+
+      if (request.method === "POST" && path === "/hook-pack-checkout") {
+        const form = await request.formData();
+        const payload = {
+          audience: "creator",
+          niches: ["Creator / Personal Brand"],
+          product_key: "hooks",
+          brief: {
+            promotion_subject: String(form.get("promotion_subject") || "").trim(),
+            brand_summary: String(form.get("brand_summary") || "").trim(),
+            key_message: String(form.get("key_message") || "").trim(),
+            platforms: String(form.get("platforms") || "").split("|").map((v) => v.trim()).filter(Boolean),
+            cta: String(form.get("cta") || "").trim(),
+            destination_url: String(form.get("destination_url") || "").trim(),
+            extra_notes: String(form.get("extra_notes") || "").trim()
+          },
+          source: "website"
+        };
+
+        const intentRequest = new Request(new URL("/api/shop-intents", request.url), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const intentResponse = await createShoppingIntent(intentRequest, env);
+        const intentData = await intentResponse.json().catch(() => ({}));
+
+        if (!intentResponse.ok || !intentData.success || !intentData.intent_id) {
+          return html(`<!doctype html><html><body style="font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px">
+          <h1>Checkout setup error</h1>
+          <p><strong>${String(intentData.error || "Unable to prepare checkout")}</strong></p>
+          <pre style="white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:12px">${String(intentData.detail || "No backend detail returned.")}</pre>
+          <p><a href="/hook-pack-test">Back to Hook Pack test</a></p>
+          </body></html>`, intentResponse.status || 500);
+        }
+
+        const stripe = new URL("https://buy.stripe.com/test_14A00i1Q1azJ2YE5b6fMA02");
+        stripe.searchParams.set("client_reference_id", intentData.intent_id);
+        return Response.redirect(stripe.toString(), 303);
       }
 
       if (request.method === "GET" && path === "/api/commerce/status") {
