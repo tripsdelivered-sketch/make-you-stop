@@ -427,15 +427,16 @@ $$('#needChips input').forEach(inp=>inp.addEventListener('change',()=>{
 }));
 function eligible(){return catalog.filter(p=>p.audiences.includes(audience||'creator'))}
 function ensureUnitNiches(item){
- if(!item.unitNiches)item.unitNiches=[]; while(item.unitNiches.length<item.qty)item.unitNiches.push(selectedNiches[0]||''); if(item.unitNiches.length>item.qty)item.unitNiches=item.unitNiches.slice(0,item.qty);
- if(selectedNiches.length===1)item.unitNiches=item.unitNiches.map(()=>selectedNiches[0]);
+ item.qty=1;
+ if(!item.unitNiches||!item.unitNiches.length)item.unitNiches=[selectedNiches[0]||''];
+ item.unitNiches=item.unitNiches.slice(0,1);
+ if(selectedNiches.length===1)item.unitNiches=[selectedNiches[0]];
 }
 function renderNicheAssignment(row,item){
  const wrap=row.querySelector('.product-niche-assign'); ensureUnitNiches(item);
  if(selectedNiches.length<=1){wrap.innerHTML='<span class="assigned-niche">For: '+(selectedNiches[0]||'Choose niche')+'</span>';return}
- wrap.innerHTML='<div class="unit-assign-head"><strong>'+ (item.qty===1?'Who is this item for?':'Choose a niche for each item') +'</strong><span>One purchased unit = one niche.</span></div>'+Array.from({length:item.qty},(_,i)=>'<div class="unit-niche-row"><span class="unit-label">'+(item.qty>1?'Item '+(i+1):'Use for')+'</span><div class="unit-niche-options">'+selectedNiches.map(n=>'<label><input type="radio" name="unit-'+item.id+'-'+i+'" value="'+n.replaceAll('"','&quot;')+'" '+(item.unitNiches[i]===n?'checked':'')+'><span>'+n+'</span></label>').join('')+'</div></div>').join('')+'<button class="add-another-niche" type="button">+ Add another for another niche</button>';
- wrap.querySelectorAll('input[type=radio]').forEach(inp=>inp.addEventListener('change',e=>{const unit=e.target.closest('.unit-niche-row');const idx=[...wrap.querySelectorAll('.unit-niche-row')].indexOf(unit);item.unitNiches[idx]=e.target.value;renderCart()}));
- wrap.querySelector('.add-another-niche')?.addEventListener('click',()=>{item.qty++;ensureUnitNiches(item);renderProducts();renderCart()});
+ wrap.innerHTML='<div class="unit-assign-head"><strong>Which niche is this order for?</strong><span>Choose one niche for this checkout.</span></div><div class="unit-niche-row"><span class="unit-label">Use for</span><div class="unit-niche-options">'+selectedNiches.map(n=>'<label><input type="radio" name="unit-'+item.id+'-0" value="'+n.replaceAll('"','&quot;')+'" '+(item.unitNiches[0]===n?'checked':'')+'><span>'+n+'</span></label>').join('')+'</div></div>';
+ wrap.querySelectorAll('input[type=radio]').forEach(inp=>inp.addEventListener('change',e=>{item.unitNiches[0]=e.target.value;item.qty=1;renderCart()}));
 }
 function createProductRow(p,kind){
  const existing=cartItemFor(p.key); const row=document.createElement('article'); row.className='shop-list-row'+(existing?' selected':'')+(kind==='recommended'?' recommended':'')+(kind==='best'?' best-match':'');
