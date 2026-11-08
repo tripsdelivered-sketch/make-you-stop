@@ -951,6 +951,16 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
         return productionContext(request, env, productionContextMatch[1]);
       }
 
+      if (request.method === "GET" && path === "/__schema-test/make-ingress-config-7f3c9a") {
+        return new Response(JSON.stringify({
+          make_ingress_url_configured: Boolean(env.MAKE_PRODUCTION_INGRESS_URL),
+          make_ingress_api_key_configured: Boolean(env.MAKE_PRODUCTION_INGRESS_API_KEY)
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
+        });
+      }
+
       if (request.method === "GET" && path === "/__schema-test/production-context-v1-7f3c9a") {
         if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) {
           return new Response(JSON.stringify({ success: false, error: "Make ingress is not configured" }), {
