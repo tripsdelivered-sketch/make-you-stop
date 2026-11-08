@@ -2,6 +2,9 @@ name = "make-you-stop-upload"
 main = "src/index.js"
 compatibility_date = "2026-10-27"
 
+[vars]
+MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/jqatv3jugzj2nlreozpfwuuwd21qihq4"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "make-you-stop-deliverables"
