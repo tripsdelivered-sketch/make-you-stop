@@ -919,6 +919,7 @@ export async function expandOrder(request, env, orderId) {
   await updateOrderManifest(env, orderId, resolved, expectedCount);
 
   const storefrontIntake = await applyLandingBriefAsIntake(env, orderId, created, shoppingIntent);
+  const productionDispatch = await dispatchReadyJobsToMake(env, orderId);
 
   if (safeId(body.stripe_event_id)) {
     await env.DB.prepare(`
@@ -947,6 +948,7 @@ export async function expandOrder(request, env, orderId) {
     expected_deliverables: expectedCount,
     shopping_intent: shoppingIntent,
     storefront_intake: storefrontIntake,
+    production_dispatch: productionDispatch,
     jobs: created
   });
 }
@@ -1161,7 +1163,15 @@ export async function submitIntake(request, env, rawToken) {
     `).bind(row.order_id).run();
   }
 
-  return json({ success: true, submission_id: submissionId, order_id: row.order_id, job_id: row.job_id || null });
+  const productionDispatch = await dispatchReadyJobsToMake(env, row.order_id);
+
+  return json({
+    success: true,
+    submission_id: submissionId,
+    order_id: row.order_id,
+    job_id: row.job_id || null,
+    production_dispatch: productionDispatch
+  });
 }
 
 export async function jobContext(request, env, jobId) {
@@ -1415,6 +1425,120 @@ export async function productionContext(request, env, jobId) {
       created_at: asset.created_at
     }))
   });
+}
+
+
+async function rollbackProductionClaim(env, jobId, claimId) {
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='production_ready',
+        production_claim_id=NULL,
+        production_claimed_at=NULL,
+        updated_at=datetime('now')
+    WHERE job_id=?
+      AND status='production_claimed'
+      AND production_claim_id=?
+  `).bind(jobId, claimId).run();
+}
+
+async function dispatchProductionJobToMake(env, jobId) {
+  if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) {
+    return { job_id: jobId, dispatched: false, skipped: true, reason: "make_ingress_not_configured" };
+  }
+
+  const claimId = `production_${jobId}`;
+  const internalHeaders = {
+    "Authorization": `Bearer ${env.UPLOAD_SECRET}`,
+    "Content-Type": "application/json"
+  };
+
+  const claimRequest = new Request(`https://internal.invalid/api/jobs/${jobId}/claim`, {
+    method: "POST",
+    headers: internalHeaders,
+    body: JSON.stringify({ claim_id: claimId })
+  });
+  const claimResponse = await claimProductionJob(claimRequest, env, jobId);
+  const claimPayload = await claimResponse.json().catch(() => ({}));
+
+  if (!claimResponse.ok || claimPayload?.claimed_now !== true) {
+    return {
+      job_id: jobId,
+      dispatched: false,
+      skipped: true,
+      reason: claimPayload?.idempotent_replay ? "already_claimed" : "claim_not_acquired",
+      claim_status: claimResponse.status
+    };
+  }
+
+  try {
+    const contextRequest = new Request(`https://internal.invalid/api/jobs/${jobId}/production-context`, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${env.UPLOAD_SECRET}` }
+    });
+    const contextResponse = await productionContext(contextRequest, env, jobId);
+    const productionPayload = await contextResponse.json().catch(() => null);
+
+    if (!contextResponse.ok || !productionPayload || productionPayload.contract !== "production_context_v1") {
+      await rollbackProductionClaim(env, jobId, claimId);
+      return {
+        job_id: jobId,
+        dispatched: false,
+        reason: "production_context_failed",
+        context_status: contextResponse.status
+      };
+    }
+
+    const makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
+      },
+      body: JSON.stringify(productionPayload)
+    });
+
+    if (!makeResponse.ok) {
+      await rollbackProductionClaim(env, jobId, claimId);
+      return {
+        job_id: jobId,
+        dispatched: false,
+        reason: "make_ingress_rejected",
+        make_status: makeResponse.status
+      };
+    }
+
+    return {
+      job_id: jobId,
+      dispatched: true,
+      claim_id: claimId,
+      make_status: makeResponse.status
+    };
+  } catch (error) {
+    await rollbackProductionClaim(env, jobId, claimId);
+    return {
+      job_id: jobId,
+      dispatched: false,
+      reason: "make_ingress_error",
+      error: error?.message || "Unknown Make ingress error"
+    };
+  }
+}
+
+async function dispatchReadyJobsToMake(env, orderId) {
+  if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) return [];
+
+  const result = await env.DB.prepare(`
+    SELECT job_id
+    FROM job_context
+    WHERE order_id=? AND status='production_ready'
+    ORDER BY sequence_index ASC
+  `).bind(orderId).all();
+
+  const dispatches = [];
+  for (const row of result.results || []) {
+    dispatches.push(await dispatchProductionJobToMake(env, row.job_id));
+  }
+  return dispatches;
 }
 
 export async function readyJobs(request, env) {
