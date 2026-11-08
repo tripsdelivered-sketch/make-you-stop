@@ -97,7 +97,11 @@ const CORE_MANIFESTS = [
   {
     product_key: "hooks",
     display_name: "Hook Pack",
-    manifest_version: 1,
+    manifest_version: 2,
+    output_requirements: {
+      quantity: 10,
+      required_sections: ["top_3_highlights", "cta_starters", "usage_notes"]
+    },
     jobs: [
       { job_key: "hooks", role: "primary", deliverable_type: "hooks", requested_lane: "hooks", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -865,6 +869,8 @@ export async function expandOrder(request, env, orderId) {
       sequence_index: Number(spec.sequence_index || 1),
       delivery_order: Number(spec.delivery_order || 1),
       manifest_version: resolved.manifest_version,
+      manifest: resolved.manifest,
+      output_requirements: resolved.manifest?.output_requirements || null,
       status: "awaiting_intake",
       intake_status: spec.intake_type === "shared_parent_intake" ? "shared_parent" : "pending"
     };
@@ -1161,7 +1167,7 @@ export async function jobContext(request, env, jobId) {
 
   const order = await env.DB.prepare(`
     SELECT order_id, customer_id, brand_id, customer_email, product_selected, status,
-           expected_deliverables, completed_deliverables, delivery_email_sent_at
+           expected_deliverables, completed_deliverables, delivery_email_sent_at, expected_manifest_json
     FROM orders WHERE order_id = ?
   `).bind(job.order_id).first();
 
@@ -1172,10 +1178,14 @@ export async function jobContext(request, env, jobId) {
     ORDER BY created_at DESC LIMIT 1
   `).bind(job.order_id, job.job_id).first();
 
+  let manifest = null;
+  try { manifest = order?.expected_manifest_json ? JSON.parse(order.expected_manifest_json) : null; } catch {}
+
   return json({
     success: true,
-    job,
+    job: { ...job, manifest, output_requirements: manifest?.output_requirements || null },
     order: order || null,
+    manifest,
     intake: intake ? { ...intake, payload: JSON.parse(intake.payload_json) } : null
   });
 }
@@ -1192,7 +1202,7 @@ export async function productionContext(request, env, jobId) {
 
   const order = await env.DB.prepare(`
     SELECT order_id, customer_id, brand_id, customer_email, product_selected, status,
-           expected_deliverables, completed_deliverables, delivery_email_sent_at
+           expected_deliverables, completed_deliverables, delivery_email_sent_at, expected_manifest_json
     FROM orders WHERE order_id = ?
   `).bind(job.order_id).first();
 
@@ -1241,6 +1251,9 @@ export async function productionContext(request, env, jobId) {
     created_at: intent.created_at
   } : null;
 
+  let manifest = null;
+  try { manifest = order?.expected_manifest_json ? JSON.parse(order.expected_manifest_json) : null; } catch {}
+
   return json({
     success: true,
     contract: "production_context_v1",
@@ -1259,9 +1272,12 @@ export async function productionContext(request, env, jobId) {
       sequence_index: Number(job.sequence_index || 1),
       delivery_order: Number(job.delivery_order || 1),
       manifest_version: Number(job.manifest_version || 1),
+      manifest,
+      output_requirements: manifest?.output_requirements || null,
       status: job.status,
       intake_status: job.intake_status
     },
+    manifest,
     customer_context: {
       customer_id: order?.customer_id || null,
       brand_id: order?.brand_id || null,
@@ -1303,33 +1319,42 @@ export async function readyJobs(request, env) {
   const requestedLane = url.searchParams.get("requested_lane");
 
   let sql = `
-    SELECT * FROM job_context
-    WHERE status='production_ready' AND job_role=?
+    SELECT jc.*, o.expected_manifest_json
+    FROM job_context jc
+    LEFT JOIN orders o ON o.order_id = jc.order_id
+    WHERE jc.status='production_ready' AND jc.job_role=?
   `;
   const params = [role];
 
   if (role === "support" && componentType) {
     if (!safeId(componentType)) return json({ success: false, error: "Invalid component_type" }, 400);
-    sql += " AND component_type=?";
+    sql += " AND jc.component_type=?";
     params.push(componentType);
   }
 
   if (productKey) {
     if (!safeId(productKey)) return json({ success: false, error: "Invalid product_key" }, 400);
-    sql += " AND product_key=?";
+    sql += " AND jc.product_key=?";
     params.push(productKey);
   }
 
   if (requestedLane) {
     if (!safeId(requestedLane)) return json({ success: false, error: "Invalid requested_lane" }, 400);
-    sql += " AND requested_lane=?";
+    sql += " AND jc.requested_lane=?";
     params.push(requestedLane);
   }
 
-  sql += " ORDER BY order_id ASC, sequence_index ASC LIMIT ?";
+  sql += " ORDER BY jc.order_id ASC, jc.sequence_index ASC LIMIT ?";
   params.push(limit);
 
   const result = await env.DB.prepare(sql).bind(...params).all();
+
+  const jobs = (result.results || []).map((row) => {
+    let manifest = null;
+    try { manifest = row.expected_manifest_json ? JSON.parse(row.expected_manifest_json) : null; } catch {}
+    const { expected_manifest_json, ...job } = row;
+    return { ...job, manifest, output_requirements: manifest?.output_requirements || null };
+  });
 
   return json({
     success: true,
@@ -1337,7 +1362,7 @@ export async function readyJobs(request, env) {
     component_type: role === "support" ? componentType || null : null,
     product_key: productKey || null,
     requested_lane: requestedLane || null,
-    jobs: result.results || []
+    jobs
   });
 }
 
