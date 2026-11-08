@@ -244,6 +244,8 @@ async function ensureTables(env) {
       manifest_version INTEGER NOT NULL DEFAULT 1,
       status TEXT NOT NULL DEFAULT 'awaiting_intake',
       intake_status TEXT NOT NULL DEFAULT 'pending',
+      production_claim_id TEXT,
+      production_claimed_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
@@ -302,6 +304,12 @@ async function ensureTables(env) {
   const jobContextCols = await tableColumns(env, "job_context");
   if (!jobContextCols.has("deliverable_id")) {
     await env.DB.prepare("ALTER TABLE job_context ADD COLUMN deliverable_id TEXT").run();
+  }
+  if (!jobContextCols.has("production_claim_id")) {
+    await env.DB.prepare("ALTER TABLE job_context ADD COLUMN production_claim_id TEXT").run();
+  }
+  if (!jobContextCols.has("production_claimed_at")) {
+    await env.DB.prepare("ALTER TABLE job_context ADD COLUMN production_claimed_at TEXT").run();
   }
 
   const shoppingIntentCols = await tableColumns(env, "shopping_intents");
@@ -1187,6 +1195,109 @@ export async function jobContext(request, env, jobId) {
     order: order || null,
     manifest,
     intake: intake ? { ...intake, payload: JSON.parse(intake.payload_json) } : null
+  });
+}
+
+
+export async function claimProductionJob(request, env, jobId) {
+  const authError = auth(request, env);
+  if (authError) return authError;
+  await ensureTables(env);
+  if (!safeId(jobId)) return json({ success: false, error: "Invalid job_id" }, 400);
+
+  const body = await readJson(request).catch(() => null);
+  const requestedClaimId = body?.claim_id == null || body.claim_id === ""
+    ? `production_${jobId}`
+    : String(body.claim_id);
+
+  if (!safeId(requestedClaimId)) {
+    return json({ success: false, error: "Invalid claim_id" }, 400);
+  }
+
+  const existing = await env.DB.prepare(`
+    SELECT job_id, order_id, deliverable_id, product_key, requested_lane, status,
+           intake_status, production_claim_id, production_claimed_at
+    FROM job_context
+    WHERE job_id = ?
+  `).bind(jobId).first();
+
+  if (!existing) return json({ success: false, error: "Job context not found" }, 404);
+
+  // A retry using the same deterministic claim is a safe replay, not a second production start.
+  if (existing.status === "production_claimed" && existing.production_claim_id === requestedClaimId) {
+    return json({
+      success: true,
+      claimed: true,
+      claimed_now: false,
+      idempotent_replay: true,
+      claim_id: requestedClaimId,
+      job: existing
+    });
+  }
+
+  if (existing.status !== "production_ready") {
+    return json({
+      success: false,
+      error: "Job is not available for production claim",
+      current_status: existing.status,
+      existing_claim_id: existing.production_claim_id || null
+    }, 409);
+  }
+
+  const result = await env.DB.prepare(`
+    UPDATE job_context
+    SET status = 'production_claimed',
+        production_claim_id = ?,
+        production_claimed_at = datetime('now'),
+        updated_at = datetime('now')
+    WHERE job_id = ?
+      AND status = 'production_ready'
+      AND (production_claim_id IS NULL OR production_claim_id = '')
+  `).bind(requestedClaimId, jobId).run();
+
+  if (Number(result.meta?.changes || 0) !== 1) {
+    const raced = await env.DB.prepare(`
+      SELECT job_id, order_id, deliverable_id, product_key, requested_lane, status,
+             intake_status, production_claim_id, production_claimed_at
+      FROM job_context
+      WHERE job_id = ?
+    `).bind(jobId).first();
+
+    if (raced?.status === "production_claimed" && raced.production_claim_id === requestedClaimId) {
+      return json({
+        success: true,
+        claimed: true,
+        claimed_now: false,
+        idempotent_replay: true,
+        claim_id: requestedClaimId,
+        job: raced
+      });
+    }
+
+    return json({
+      success: false,
+      error: "Production claim conflict",
+      current_status: raced?.status || null,
+      existing_claim_id: raced?.production_claim_id || null
+    }, 409);
+  }
+
+  const claimed = await env.DB.prepare(`
+    SELECT job_id, order_id, parent_job_id, deliverable_id, product_key, deliverable_type,
+           component_type, requested_lane, job_role, counts_toward_expected, request_type,
+           sequence_index, delivery_order, manifest_version, status, intake_status,
+           production_claim_id, production_claimed_at
+    FROM job_context
+    WHERE job_id = ?
+  `).bind(jobId).first();
+
+  return json({
+    success: true,
+    claimed: true,
+    claimed_now: true,
+    idempotent_replay: false,
+    claim_id: requestedClaimId,
+    job: claimed
   });
 }
 
