@@ -513,6 +513,136 @@ function cleanBrief(value) {
   return out;
 }
 
+const MAKE_LANE_BY_CANONICAL = {
+  hooks: "Hooks only",
+  image_words: "Image",
+  video_reel: "video_reel",
+  guide_ebook: "Guide / eBook",
+  storyboard: "storyboard",
+  storyboard_showcase: "storyboard_showcase",
+  what_to_say_guide: "What to Say Guide",
+  unboxing_product_reveal: "Unboxing / Product Reveal",
+  "Storyboard / Showcase": "Storyboard / Showcase"
+};
+
+function makeRequestedLane(value) {
+  const lane = typeof value === "string" ? value.trim() : "";
+  return MAKE_LANE_BY_CANONICAL[lane] || lane || null;
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function firstListValue(value) {
+  return Array.isArray(value) && value.length ? value[0] : null;
+}
+
+function makeExecutionContract({ job, order, manifest, shoppingIntent, intake, intakePayload, assets }) {
+  const brief = shoppingIntent?.brief && typeof shoppingIntent.brief === "object"
+    ? shoppingIntent.brief
+    : {};
+  const payload = intakePayload && typeof intakePayload === "object" && !Array.isArray(intakePayload)
+    ? intakePayload
+    : {};
+  const platform = firstText(
+    firstListValue(brief.platforms),
+    firstListValue(payload.platforms),
+    payload.platform
+  );
+  const promotedSubject = firstText(
+    brief.promotion_subject,
+    payload.promoted_subject,
+    payload.promotion_subject
+  );
+  const briefText = firstText(
+    brief.key_message,
+    payload.brief,
+    payload.key_message,
+    brief.brand_summary
+  );
+  const audience = firstText(
+    shoppingIntent?.audience,
+    brief.audience_detail,
+    payload.audience
+  );
+  const desiredOutcome = firstText(
+    shoppingIntent?.goal,
+    brief.guide_outcome,
+    brief.cta,
+    payload.desired_outcome,
+    payload.cta
+  );
+  const additionalNotes = firstText(
+    brief.extra_notes,
+    payload.additional_notes,
+    payload.extra_notes
+  );
+
+  return {
+    contract: "make_execution_v1",
+    job_id: job.job_id,
+    order_id: job.order_id,
+    parent_job_id: job.parent_job_id || null,
+    deliverable_id: job.deliverable_id || null,
+    product_key: job.product_key,
+    deliverable_type: job.deliverable_type,
+    component_type: job.component_type || null,
+    job_role: job.job_role,
+    sequence_index: Number(job.sequence_index || 1),
+    delivery_order: Number(job.delivery_order || 1),
+    canonical_requested_lane: job.requested_lane,
+    requested_lane: makeRequestedLane(job.requested_lane),
+    manifest,
+    output_requirements: manifest?.output_requirements || null,
+    customer_context: {
+      customer_id: order?.customer_id || null,
+      brand_id: order?.brand_id || null,
+      customer_email: order?.customer_email || null,
+      customer_name: firstText(payload.customer_name, payload.full_name),
+      brand_name: firstText(payload.brand_name, payload.name_or_brand_name),
+      product_selected: order?.product_selected || null,
+      promoted_subject: promotedSubject,
+      brief: briefText,
+      brand_context: firstText(brief.brand_summary, payload.brand_summary, payload.brand_context),
+      platform,
+      audience,
+      desired_outcome: desiredOutcome,
+      important_inclusions: payload.important_inclusions || brief.must_include || null,
+      things_to_avoid: payload.things_to_avoid || null,
+      additional_notes: additionalNotes,
+      asset_use_policy: firstText(payload.asset_use_policy, payload.asset_policy),
+      cta_action: firstText(brief.cta, payload.cta),
+      cta_destination_type: firstText(brief.destination_type, payload.destination_type),
+      cta_destination_value: firstText(brief.destination_url, payload.destination_url),
+      approved_purchase_instruction: firstText(brief.action_instruction, payload.action_instruction),
+      approved_claims: payload.approved_claims || null
+    },
+    shopping_intent: shoppingIntent,
+    intake: intake ? {
+      submission_id: intake.submission_id,
+      created_at: intake.created_at,
+      payload: intakePayload
+    } : null,
+    asset_manifest: assets.map((asset) => ({
+      asset_id: asset.asset_id,
+      order_id: asset.order_id,
+      job_id: asset.job_id,
+      customer_id: asset.customer_id || null,
+      brand_id: asset.brand_id || null,
+      original_name: asset.original_name || null,
+      mime_type: asset.mime_type,
+      size_bytes: asset.size_bytes == null ? null : Number(asset.size_bytes),
+      reuse_permission: asset.reuse_permission,
+      source_type: asset.source_type,
+      created_at: asset.created_at
+    }))
+  };
+}
+
 async function ensureShoppingIntentTable(env) {
   if (!env.DB) throw new Error("D1 binding is not configured");
 
@@ -1375,9 +1505,20 @@ export async function productionContext(request, env, jobId) {
   let manifest = null;
   try { manifest = order?.expected_manifest_json ? JSON.parse(order.expected_manifest_json) : null; } catch {}
 
+  const executionContract = makeExecutionContract({
+    job,
+    order,
+    manifest,
+    shoppingIntent,
+    intake,
+    intakePayload,
+    assets
+  });
+
   return json({
     success: true,
     contract: "production_context_v1",
+    execution_contract: executionContract,
     job: {
       job_id: job.job_id,
       order_id: job.order_id,
