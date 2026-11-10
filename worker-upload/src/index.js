@@ -731,6 +731,140 @@ export default {
         });
       }
 
+      if (request.method === "GET" && path === "/api/schema-test/make-execution-contract") {
+        if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) {
+          return json({ success: false, error: "Make ingress is not configured" }, 500);
+        }
+
+        const sample = {
+          success: true,
+          contract: "production_context_v1",
+          execution_contract: {
+            contract: "make_execution_v1",
+            job_id: "job_schema_test",
+            order_id: "ord_schema_test",
+            parent_job_id: null,
+            deliverable_id: "del_schema_test",
+            product_key: "hooks",
+            deliverable_type: "hooks",
+            component_type: null,
+            job_role: "primary",
+            sequence_index: 1,
+            delivery_order: 1,
+            canonical_requested_lane: "hooks",
+            requested_lane: "Hooks only",
+            manifest: {
+              product_key: "hooks",
+              display_name: "Hook Pack",
+              output_requirements: {
+                quantity: 10,
+                required_sections: ["top_3_highlights", "cta_starters", "usage_notes"]
+              }
+            },
+            output_requirements: {
+              quantity: 10,
+              required_sections: ["top_3_highlights", "cta_starters", "usage_notes"]
+            },
+            customer_context: {
+              customer_id: "cust_schema_test",
+              brand_id: "brand_schema_test",
+              customer_email: "schema-test@example.invalid",
+              customer_name: "Schema Test",
+              brand_name: "Make You Stop",
+              product_selected: "Hook Pack",
+              promoted_subject: "Schema test creative brief",
+              brief: "Schema-only sample for Make webhook field detection.",
+              brand_context: "Schema-only sample.",
+              platform: "TikTok",
+              audience: "creator",
+              desired_outcome: "Generate hooks",
+              important_inclusions: null,
+              things_to_avoid: null,
+              additional_notes: "No real customer or order data.",
+              asset_use_policy: null,
+              cta_action: "Visit the website",
+              cta_destination_type: "website",
+              cta_destination_value: "https://makeyoustop.com",
+              approved_purchase_instruction: null,
+              approved_claims: null
+            },
+            shopping_intent: {
+              intent_id: "intent_schema_test",
+              audience: "creator",
+              niches: ["Creator / Personal Brand"],
+              needs: [],
+              goal: "Generate hooks",
+              brief: {
+                promotion_subject: "Schema test creative brief",
+                brand_summary: "Schema-only sample.",
+                key_message: "Schema-only sample for Make webhook field detection.",
+                platforms: ["TikTok"],
+                cta: "Visit the website"
+              },
+              selected_product_key: "hooks",
+              source: "schema_test"
+            },
+            intake: {
+              submission_id: "intake_schema_test",
+              created_at: "2026-11-10T00:00:00.000Z",
+              payload: {
+                brand_name: "Make You Stop",
+                platform: "TikTok"
+              }
+            },
+            asset_manifest: []
+          },
+          job: {
+            job_id: "job_schema_test",
+            order_id: "ord_schema_test",
+            deliverable_id: "del_schema_test",
+            product_key: "hooks",
+            deliverable_type: "hooks",
+            requested_lane: "hooks",
+            job_role: "primary",
+            counts_toward_expected: 1,
+            request_type: "schema_test",
+            sequence_index: 1,
+            delivery_order: 1,
+            manifest_version: 2,
+            status: "schema_test",
+            intake_status: "complete"
+          },
+          manifest: {
+            product_key: "hooks",
+            display_name: "Hook Pack",
+            output_requirements: {
+              quantity: 10,
+              required_sections: ["top_3_highlights", "cta_starters", "usage_notes"]
+            }
+          },
+          customer_context: {
+            customer_id: "cust_schema_test",
+            brand_id: "brand_schema_test",
+            customer_email: "schema-test@example.invalid",
+            product_selected: "Hook Pack"
+          },
+          shopping_intent: null,
+          intake: null,
+          asset_manifest: []
+        };
+
+        const makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
+          },
+          body: JSON.stringify(sample)
+        });
+
+        return json({
+          success: makeResponse.ok,
+          schema_test_only: true,
+          make_status: makeResponse.status
+        }, makeResponse.ok ? 200 : 502);
+      }
+
       // Backward-compatible Guide upload: existing Make #410 can continue PUT /
       if (request.method === "PUT" && (path === "/" || path === "/upload")) {
         return uploadObject(request, env);
