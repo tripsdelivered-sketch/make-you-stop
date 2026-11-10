@@ -581,6 +581,32 @@ function makeExecutionContract({ job, order, manifest, shoppingIntent, intake, i
     payload.additional_notes,
     payload.extra_notes
   );
+  const brandName = firstText(payload.brand_name, payload.name_or_brand_name);
+  const brandContext = firstText(brief.brand_summary, payload.brand_summary, payload.brand_context);
+  const customerName = firstText(payload.customer_name, payload.full_name);
+  const assetUsePolicy = firstText(payload.asset_use_policy, payload.asset_policy);
+  const approvedClaims = payload.approved_claims || null;
+  const ctaAction = firstText(brief.cta, payload.cta);
+  const ctaDestinationType = firstText(brief.destination_type, payload.destination_type);
+  const ctaDestinationValue = firstText(brief.destination_url, payload.destination_url);
+  const approvedPurchaseInstruction = firstText(brief.action_instruction, payload.action_instruction);
+  const importantInclusions = payload.important_inclusions || brief.must_include || null;
+  const thingsToAvoid = payload.things_to_avoid || null;
+  const productionObjective = firstText(payload.production_objective, desiredOutcome);
+  const productionDirection = firstText(payload.production_direction, brief.key_message, payload.key_message);
+  const assetManifest = assets.map((asset) => ({
+    asset_id: asset.asset_id,
+    order_id: asset.order_id,
+    job_id: asset.job_id,
+    customer_id: asset.customer_id || null,
+    brand_id: asset.brand_id || null,
+    original_name: asset.original_name || null,
+    mime_type: asset.mime_type,
+    size_bytes: asset.size_bytes == null ? null : Number(asset.size_bytes),
+    reuse_permission: asset.reuse_permission,
+    source_type: asset.source_type,
+    created_at: asset.created_at
+  }));
 
   return {
     contract: "make_execution_v1",
@@ -598,48 +624,67 @@ function makeExecutionContract({ job, order, manifest, shoppingIntent, intake, i
     requested_lane: makeRequestedLane(job.requested_lane),
     manifest,
     output_requirements: manifest?.output_requirements || null,
+
+    customer_name: customerName,
+    brand_name: brandName,
+    product_selected: order?.product_selected || null,
+    promoted_subject: promotedSubject,
+    brief: briefText,
+    platform,
+    audience,
+    desired_outcome: desiredOutcome,
+    production_objective: productionObjective,
+    production_direction: productionDirection,
+    important_inclusions: importantInclusions,
+    things_to_avoid: thingsToAvoid,
+    additional_notes: additionalNotes,
+    asset_manifest: assetManifest,
+    supplied_assets: assetManifest,
+    asset_use_policy: assetUsePolicy,
+
+    cta: {
+      desired_customer_action: ctaAction || desiredOutcome,
+      destination_type: ctaDestinationType,
+      destination_value: ctaDestinationValue,
+      approved_purchase_instruction: approvedPurchaseInstruction,
+      approved_claims: approvedClaims
+    },
+
+    assets: {
+      manifest: assetManifest,
+      supplied_assets: assetManifest,
+      asset_use_policy: assetUsePolicy
+    },
+
     customer_context: {
       customer_id: order?.customer_id || null,
       brand_id: order?.brand_id || null,
       customer_email: order?.customer_email || null,
-      customer_name: firstText(payload.customer_name, payload.full_name),
-      brand_name: firstText(payload.brand_name, payload.name_or_brand_name),
+      customer_name: customerName,
+      brand_name: brandName,
       product_selected: order?.product_selected || null,
       promoted_subject: promotedSubject,
       brief: briefText,
-      brand_context: firstText(brief.brand_summary, payload.brand_summary, payload.brand_context),
+      brand_context: brandContext,
       platform,
       audience,
       desired_outcome: desiredOutcome,
-      important_inclusions: payload.important_inclusions || brief.must_include || null,
-      things_to_avoid: payload.things_to_avoid || null,
+      important_inclusions: importantInclusions,
+      things_to_avoid: thingsToAvoid,
       additional_notes: additionalNotes,
-      asset_use_policy: firstText(payload.asset_use_policy, payload.asset_policy),
-      cta_action: firstText(brief.cta, payload.cta),
-      cta_destination_type: firstText(brief.destination_type, payload.destination_type),
-      cta_destination_value: firstText(brief.destination_url, payload.destination_url),
-      approved_purchase_instruction: firstText(brief.action_instruction, payload.action_instruction),
-      approved_claims: payload.approved_claims || null
+      asset_use_policy: assetUsePolicy,
+      cta_action: ctaAction,
+      cta_destination_type: ctaDestinationType,
+      cta_destination_value: ctaDestinationValue,
+      approved_purchase_instruction: approvedPurchaseInstruction,
+      approved_claims: approvedClaims
     },
     shopping_intent: shoppingIntent,
     intake: intake ? {
       submission_id: intake.submission_id,
       created_at: intake.created_at,
       payload: intakePayload
-    } : null,
-    asset_manifest: assets.map((asset) => ({
-      asset_id: asset.asset_id,
-      order_id: asset.order_id,
-      job_id: asset.job_id,
-      customer_id: asset.customer_id || null,
-      brand_id: asset.brand_id || null,
-      original_name: asset.original_name || null,
-      mime_type: asset.mime_type,
-      size_bytes: asset.size_bytes == null ? null : Number(asset.size_bytes),
-      reuse_permission: asset.reuse_permission,
-      source_type: asset.source_type,
-      created_at: asset.created_at
-    }))
+    } : null
   };
 }
 
