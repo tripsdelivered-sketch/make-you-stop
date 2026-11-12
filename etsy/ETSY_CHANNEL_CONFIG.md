@@ -16,9 +16,9 @@ Use Etsy for eligible ready-made seller-designed digital products such as:
 - visual assets
 
 Do not use Etsy for:
-- AI-generated functional guides/instructions
-- AI prompt bundles
-- bot-generated products/listings
+- functional guides/instructions that do not fit Etsy's current marketplace rules
+- prohibited prompt bundles
+- low-quality or automatically published products/listings
 - current custom creative service lanes as ordinary services
 
 ## Relationship to MakeYouStop.com
