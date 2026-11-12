@@ -86,7 +86,7 @@ const SEEDED_STRIPE_MAPPINGS = [
   { mapping_key: "price:price_1UZ99UBG3Bv4a9NrCWZ8hXXb", product_key: "storyboard_showcase" },
   { mapping_key: "product:prod_VaJnl9rPu4KRau", product_key: "storyboard_showcase" },
   { mapping_key: "price:price_1UZ9B0BG3Bv4a9Nrd7sVeDjD", product_key: "unboxing_product_reveal" },
-  { mapping_key: "product:prod_VaJoG1WjYBlu6L", product_key: "unboxing_product_reveal" },
+  { mapping_key: "product:prod_VaJoG1WjYBIu6L", product_key: "unboxing_product_reveal" },
   { mapping_key: "price:price_1UZ9CiBG3Bv4a9NroH0bknz8", product_key: "video_reel" },
   { mapping_key: "product:prod_VaJqVDVdi4316S", product_key: "video_reel" },
   { mapping_key: "price:price_1UZ3dfBG3Bv4a9NrJILRsKTP", product_key: "guide_ebook" },
@@ -98,6 +98,7 @@ const CORE_MANIFESTS = [
     product_key: "hooks",
     display_name: "Hook Pack",
     manifest_version: 2,
+    fulfillment_mode: "custom",
     output_requirements: {
       quantity: 10,
       required_sections: ["top_3_highlights", "cta_starters", "usage_notes"]
@@ -110,6 +111,7 @@ const CORE_MANIFESTS = [
     product_key: "image_words",
     display_name: "Image / Words",
     manifest_version: 1,
+    fulfillment_mode: "custom",
     jobs: [
       { job_key: "image_words", role: "primary", deliverable_type: "image_words", requested_lane: "image_words", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -118,6 +120,7 @@ const CORE_MANIFESTS = [
     product_key: "video_reel",
     display_name: "Video / Reel",
     manifest_version: 1,
+    fulfillment_mode: "custom",
     jobs: [
       { job_key: "video_reel", role: "primary", deliverable_type: "video_reel", requested_lane: "video_reel", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" },
       { job_key: "suggested_voice_script", role: "support", component_type: "suggested_voice_script", deliverable_type: "video_reel", requested_lane: "video_reel", counts_toward_expected: false, parent_job_key: "video_reel", sequence_index: 2, delivery_order: 1, intake_type: "shared_parent_intake" }
@@ -127,6 +130,7 @@ const CORE_MANIFESTS = [
     product_key: "what_to_say_guide",
     display_name: "What to Say Guide",
     manifest_version: 1,
+    fulfillment_mode: "custom",
     jobs: [
       { job_key: "what_to_say_guide", role: "primary", deliverable_type: "what_to_say_guide", requested_lane: "what_to_say_guide", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -135,9 +139,10 @@ const CORE_MANIFESTS = [
     product_key: "storyboard",
     display_name: "Storyboard Pack",
     manifest_version: 2,
+    fulfillment_mode: "custom",
     offer_contract: {
       currency: "USD",
-      price: 19,
+      price: 12,
       promise: "Turn one idea into two possible social story directions before you film.",
       customer_outcome: "See two clear ways to turn the idea into content before filming.",
       deliverables: [
@@ -160,10 +165,11 @@ const CORE_MANIFESTS = [
     product_key: "storyboard_showcase",
     display_name: "Storyboard + Showcase",
     manifest_version: 2,
+    fulfillment_mode: "custom",
     required_components: ["storyboard", "showcase"],
     offer_contract: {
       currency: "USD",
-      price: 29,
+      price: 22,
       promise: "Plan the story and see the strongest beats visually before filming.",
       customer_outcome: "See how the selected story direction could actually be filmed.",
       deliverables: [
@@ -193,6 +199,7 @@ const CORE_MANIFESTS = [
     product_key: "guide_ebook",
     display_name: "Guide / eBook",
     manifest_version: 1,
+    fulfillment_mode: "custom",
     jobs: [
       { job_key: "guide_ebook", role: "primary", deliverable_type: "guide_ebook", requested_lane: "guide_ebook", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -201,6 +208,7 @@ const CORE_MANIFESTS = [
     product_key: "unboxing_product_reveal",
     display_name: "Unboxing / Product Reveal",
     manifest_version: 1,
+    fulfillment_mode: "custom",
     jobs: [
       { job_key: "unboxing_product_reveal", role: "primary", deliverable_type: "unboxing_product_reveal", requested_lane: "unboxing_product_reveal", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
