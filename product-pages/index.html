@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Make You Stop — Product</title><link rel="stylesheet" href="styles.css"></head>
+<body><header class="nav"><a class="logo" href="../index.html">MAKE YOU <b>STOP</b></a><a href="../index.html#shop">Creative Shop</a></header>
+<main class="wrap"><section class="hero"><div><p class="eyebrow">Social-first product page</p><h1 id="title">Loading…</h1><p class="lead" id="promise"></p><div class="buy"><a id="buy" class="btn" href="#">Buy now →</a><span class="price" id="price"></span></div><p class="small">Sandbox review checkout · one-off digital order</p></div><div class="card"><p class="eyebrow">What you get</p><h2 id="label"></h2><ul id="includes"></ul></div></section>
+<section><div class="proof"><div><strong>1–2 second clarity</strong><br><span class="small">The exact product, result and price are visible immediately.</span></div><div><strong>Direct checkout</strong><br><span class="small">No hunting through the main website before buying.</span></div><div><strong>Still Make You Stop</strong><br><span class="small">Customers can return to the full shop at any time.</span></div></div></section>
+<section class="upgrades"><p class="eyebrow">Want to take it further?</p><h2>Optional upgrades</h2><p class="small">The main decision comes first. Only relevant next steps appear here.</p><div id="upgrades"></div></section></main>
+<footer class="footer">MAKE YOU STOP · unified product-page template · sandbox review only</footer>
+<script src="catalog.js"></script><script>
+const key=new URLSearchParams(location.search).get("product")||"hooks";
+const p=window.MYS_PRODUCT_CATALOG[key]||window.MYS_PRODUCT_CATALOG.hooks;
+document.title=p.name+" — Make You Stop";
+title.textContent=p.name;promise.textContent=p.promise;price.textContent="US$"+p.price;label.textContent=p.label;
+buy.href=p.checkout;buy.textContent="Buy "+p.name+" →";
+includes.innerHTML=p.includes.map(x=>"<li>"+x+"</li>").join("");
+upgrades.innerHTML=(p.upgrades||[]).map(u=>'<div class="upgrade"><div><strong>'+u.name+'</strong><span class="small">'+u.reason+'</span></div><a class="pill" href="?product='+u.key+'">'+(u.delta===10?'Upgrade +US$10':'View · US$'+u.delta)+'</a></div>').join("")||'<p class="small">No upgrade needed for this product.</p>';
+</script></body></html>
