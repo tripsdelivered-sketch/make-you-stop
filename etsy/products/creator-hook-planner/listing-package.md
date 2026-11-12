@@ -100,9 +100,6 @@ This is a digital planning template. No physical item will be shipped. It does n
 
 For personalised hook writing, Make You Stop offers a separate custom Hook Pack through its own shop.
 
-### AI transparency
-AI tools were used as part of the collaborative drafting/design workflow. The final product is individually reviewed, curated and published by the seller. This product is a planning template and is not an AI-generated instructional guide or AI prompt bundle.
-
 ### Personal-use licence
 For the purchaser's own personal or internal business use. Do not resell, redistribute, share or claim the files as your own.
 
@@ -142,5 +139,4 @@ Before Etsy publication:
 - verify both PDF sizes
 - proofread all text
 - confirm listing images match the actual file
-- confirm AI disclosure remains accurate
 - confirm no trademark/IP conflicts
