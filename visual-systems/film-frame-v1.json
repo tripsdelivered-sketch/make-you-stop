@@ -1,0 +1,31 @@
+{
+  "visual_system_key": "film_frame_v1",
+  "display_name": "Make You Stop Film Frame",
+  "status": "candidate",
+  "purpose": "Reusable presentation/render frame for creative planning products and selected lane outputs.",
+  "visual_rules": {
+    "frame": "thin 35mm film-strip border on all four edges",
+    "center": "large clean off-white workspace",
+    "palette": ["#111111", "#F7F1E8", "#C71920"],
+    "accent_usage": "red reserved for emphasis, status, hook or CTA cues",
+    "decorative_objects": "none",
+    "forbidden": [
+      "cartoon hook illustration",
+      "generic creator-template icons",
+      "camera photo inside content area",
+      "television photo inside content area",
+      "film reel photo inside content area",
+      "director chair photo inside content area",
+      "clapperboard photo inside content area"
+    ]
+  },
+  "content_contract": {
+    "hooks": ["opening_hook", "emotion", "unanswered_question"],
+    "storyboard": ["scene", "shot", "visual_direction", "story_progression", "payoff"],
+    "video_reel": ["first_frame", "on_screen_framing", "movement", "payoff", "cta"],
+    "what_to_say": ["spoken_opening", "key_beats", "cta"],
+    "guide_ebook": ["section_title", "body", "exercise_or_checklist"]
+  },
+  "render_rule": "Visual frame is reusable. Lane output supplies content. Do not invent decorative visuals unless explicitly requested.",
+  "customer_facing_language": "Make You Stop Creative Intelligence"
+}
