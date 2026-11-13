@@ -1,4 +1,11 @@
 const SHOP_BASE = "https://makeyoustop.com";
+const BRAND = {
+  cream:"#f4eee5",
+  coral:"#ff5f4a",
+  ink:"#111111",
+  soft:"#fffaf4",
+  line:"#e8ddd0"
+};
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -258,31 +265,44 @@ export async function buildDeliveryEmail(request, env) {
     label:"Take this further", destination_url:returnUrl
   });
 
-  const terms = safeUrl(env.TERMS_URL) || `${SHOP_BASE}/terms`;
-  const refund = safeUrl(env.REFUND_POLICY_URL) || `${SHOP_BASE}/refund-policy`;
-  const privacy = safeUrl(env.PRIVACY_POLICY_URL) || `${SHOP_BASE}/privacy-policy`;
+  const terms = safeUrl(env.TERMS_URL) || `${SHOP_BASE}/terms.html`;
+  const refund = safeUrl(env.REFUND_POLICY_URL) || `${SHOP_BASE}/refund.html`;
+  const privacy = safeUrl(env.PRIVACY_POLICY_URL) || `${SHOP_BASE}/privacy.html`;
 
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{margin:0;background:#f4f4f1;color:#111;font-family:Arial,Helvetica,sans-serif}
-.wrap{max-width:620px;margin:0 auto;padding:24px 14px}.card{background:#fff;border-radius:22px;overflow:hidden}
-.head{background:#0b0b0d;color:#fff;padding:34px 28px}.brand{font-size:12px;letter-spacing:.18em;font-weight:700}.head h1{font-size:34px;line-height:1.05;margin:18px 0 0}
-.body{padding:30px 28px}.body p{font-size:17px;line-height:1.6;margin:0 0 18px}.button{display:block;text-align:center;background:#111;color:#fff!important;text-decoration:none;padding:17px 20px;border-radius:12px;font-weight:700;font-size:17px;margin:24px 0}
-.next{border-top:1px solid #e8e8e4;margin-top:30px;padding-top:26px}.next h2{font-size:23px;margin:0 0 10px}.next a{color:#111;font-weight:700}
-.footer{text-align:center;color:#737373;font-size:12px;line-height:1.8;padding:22px 12px}.footer a{color:#737373}
-@media(max-width:480px){.wrap{padding:0}.card{border-radius:0}.head{padding:30px 22px}.head h1{font-size:30px}.body{padding:26px 22px}.body p{font-size:16px}}
+body{margin:0;background:${BRAND.cream};color:${BRAND.ink};font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:24px 14px}.card{background:${BRAND.soft};border:1px solid ${BRAND.line};border-radius:24px;overflow:hidden;box-shadow:0 14px 40px rgba(17,17,17,.08)}
+.head{background:${BRAND.cream};color:${BRAND.ink};padding:36px 28px 30px;text-align:center;border-bottom:1px solid ${BRAND.line}}
+.brand{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.18em;font-weight:800}
+.brand:before{content:"";width:9px;height:9px;border-radius:50%;background:${BRAND.coral}}
+.head h1{font-size:36px;line-height:1.03;margin:20px auto 0;max-width:500px}.head h1 span{color:${BRAND.coral}}
+.body{padding:30px 28px}.body p{font-size:17px;line-height:1.6;margin:0 0 18px}
+.kicker{font-size:12px;letter-spacing:.14em;font-weight:800;color:${BRAND.coral};text-transform:uppercase;text-align:center;margin-bottom:10px}
+.top3{background:#fff;border:1px solid ${BRAND.line};border-radius:16px;padding:17px 18px;margin:22px 0;font-size:15px;line-height:1.5}
+.button{display:block;text-align:center;background:${BRAND.coral};color:#fff!important;text-decoration:none;padding:18px 20px;border-radius:999px;font-weight:800;font-size:17px;margin:24px 0}
+.next{border-top:1px solid ${BRAND.line};margin-top:32px;padding-top:28px}.next h2{font-size:25px;margin:0 0 10px;text-align:center}
+.next p{text-align:center}.next-grid{display:grid;gap:10px;margin-top:18px}
+.next-card{display:block;border:1px solid ${BRAND.line};border-radius:16px;padding:16px 18px;text-decoration:none;color:${BRAND.ink};background:#fff;font-weight:700}
+.next-card small{display:block;font-weight:400;color:#6b625b;margin-top:5px;font-size:13px;line-height:1.4}
+.footer{text-align:center;color:#756c64;font-size:12px;line-height:1.8;padding:22px 12px}.footer a{color:#756c64}
+@media(max-width:480px){.wrap{padding:0}.card{border-radius:0;border-left:0;border-right:0}.head{padding:32px 22px 26px}.head h1{font-size:32px}.body{padding:26px 22px}.body p{font-size:16px}}
 </style></head><body><div class="wrap"><div class="card">
-<div class="head"><div class="brand">MAKE YOU STOP</div><h1>${escapeHtml(copy.subject.replace(/^Your /,"Your "))}</h1></div>
+<div class="head"><div class="brand">MAKE YOU STOP</div><div class="kicker">CREATIVE BUILT FOR THE SCROLL.</div><h1>Your personalised <span>Hook Pack</span> is ready</h1></div>
 <div class="body"><p>${escapeHtml(copy.intro)}</p><p>${escapeHtml(copy.detail)}</p>
 <a class="button" href="${escapeHtml(openUrl)}">Open your ${escapeHtml(copy.name)}</a>
-<div class="next"><h2>Want to take this further?</h2><p>Turn the strongest idea into your next piece of content, or start something new using the creator/brand context already on file.</p>
-<p><a href="${escapeHtml(upgradeUrl)}">See your next options →</a></p></div>
+<div class="next"><h2>Want to take this further?</h2><p>Keep the momentum going without starting from scratch. Your creator/brand context can carry into the next job.</p>
+<div class="next-grid">
+<a class="next-card" href="${escapeHtml(upgradeUrl)}">Turn a hook into your next creative →<small>Storyboard, Image / Words or Video / Reel options.</small></a>
+<a class="next-card" href="${escapeHtml(upgradeUrl)}">Create something new →<small>Use your saved creator/brand context for another brief.</small></a>
+<a class="next-card" href="${escapeHtml(upgradeUrl)}">Creator Monthly — US$99/month →<small>12 complete posts per month with hook, script/caption direction and Image / Words concept.</small></a>
+</div></div>
 </div></div>
 <div class="footer">Make You Stop · makeyoustop.com<br>
 <a href="${escapeHtml(terms)}">Terms &amp; Conditions</a> · <a href="${escapeHtml(refund)}">Refund Policy</a> · <a href="${escapeHtml(privacy)}">Privacy Policy</a></div>
 </div></body></html>`;
 
-  const text = `${copy.intro}\n\n${copy.detail}\n\nOpen your ${copy.name}: ${openUrl}\n\nWant to take this further?\nSee your next options: ${upgradeUrl}\n\nTerms & Conditions: ${terms}\nRefund Policy: ${refund}\nPrivacy Policy: ${privacy}\n\nMake You Stop · makeyoustop.com`;
+  const text = `${copy.intro}\n\n${copy.detail}\n\nOpen your ${copy.name}: ${openUrl}\n\nWant to take this further?\nTurn a hook into your next creative, create something new, or choose Creator Monthly — US$99/month.\nSee your next options: ${upgradeUrl}\n\nTerms & Conditions: ${terms}\nRefund Policy: ${refund}\nPrivacy Policy: ${privacy}\n\nMake You Stop · makeyoustop.com`;
 
   await insertEvent(env, body.order_id, body.job_id || null, "delivery_email_built", { product_key:productKey });
 
