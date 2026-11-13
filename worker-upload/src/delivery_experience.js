@@ -265,9 +265,9 @@ export async function buildDeliveryEmail(request, env) {
     label:"Take this further", destination_url:returnUrl
   });
 
-  const terms = safeUrl(env.TERMS_URL) || `${SHOP_BASE}/terms.html`;
-  const refund = safeUrl(env.REFUND_POLICY_URL) || `${SHOP_BASE}/refund.html`;
-  const privacy = safeUrl(env.PRIVACY_POLICY_URL) || `${SHOP_BASE}/privacy.html`;
+  const terms = safeUrl(env.TERMS_URL) || `${SHOP_BASE}/#terms`;
+  const refund = safeUrl(env.REFUND_POLICY_URL) || `${SHOP_BASE}/#refund-policy`;
+  const privacy = safeUrl(env.PRIVACY_POLICY_URL) || `${SHOP_BASE}/#privacy`;
 
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -293,16 +293,16 @@ body{margin:0;background:${BRAND.cream};color:${BRAND.ink};font-family:Arial,Hel
 <a class="button" href="${escapeHtml(openUrl)}">Open your ${escapeHtml(copy.name)}</a>
 <div class="next"><h2>Want to take this further?</h2><p>Keep the momentum going without starting from scratch. Your creator/brand context can carry into the next job.</p>
 <div class="next-grid">
-<a class="next-card" href="${escapeHtml(upgradeUrl)}">Turn a hook into your next creative →<small>Storyboard, Image / Words or Video / Reel options.</small></a>
-<a class="next-card" href="${escapeHtml(upgradeUrl)}">Create something new →<small>Use your saved creator/brand context for another brief.</small></a>
-<a class="next-card" href="${escapeHtml(upgradeUrl)}">Creator Monthly — US$99/month →<small>12 complete posts per month with hook, script/caption direction and Image / Words concept.</small></a>
+<a class="next-card" href="${escapeHtml(upgradeUrl)}">Turn a hook into your next creative →<small>Take one of your strongest hooks into a Storyboard, Image / Words creative or Video / Reel.</small></a>
+<a class="next-card" href="${escapeHtml(upgradeUrl)}">Fresh hooks every month →<small>Interested in a new personalised Hook Pack each month? See the recurring Hook option.</small></a>
+<a class="next-card" href="${escapeHtml(upgradeUrl)}">Create something new →<small>Start another brief using the creator/brand context already on file.</small></a>
 </div></div>
 </div></div>
 <div class="footer">Make You Stop · makeyoustop.com<br>
 <a href="${escapeHtml(terms)}">Terms &amp; Conditions</a> · <a href="${escapeHtml(refund)}">Refund Policy</a> · <a href="${escapeHtml(privacy)}">Privacy Policy</a></div>
 </div></body></html>`;
 
-  const text = `${copy.intro}\n\n${copy.detail}\n\nOpen your ${copy.name}: ${openUrl}\n\nWant to take this further?\nTurn a hook into your next creative, create something new, or choose Creator Monthly — US$99/month.\nSee your next options: ${upgradeUrl}\n\nTerms & Conditions: ${terms}\nRefund Policy: ${refund}\nPrivacy Policy: ${privacy}\n\nMake You Stop · makeyoustop.com`;
+  const text = `${copy.intro}\n\n${copy.detail}\n\nOpen your ${copy.name}: ${openUrl}\n\nWant to take this further?\nTurn a hook into your next creative, get fresh hooks every month, or create something new using your saved creator/brand context.\nSee your next options: ${upgradeUrl}\n\nTerms & Conditions: ${terms}\nRefund Policy: ${refund}\nPrivacy Policy: ${privacy}\n\nMake You Stop · makeyoustop.com`;
 
   await insertEvent(env, body.order_id, body.job_id || null, "delivery_email_built", { product_key:productKey });
 
