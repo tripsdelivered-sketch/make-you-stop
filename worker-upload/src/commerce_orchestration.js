@@ -1712,6 +1712,57 @@ async function dispatchProductionJobToMake(env, jobId) {
   }
 }
 
+export async function redispatchProductionJob(request, env, jobId) {
+  const authError = auth(request, env);
+  if (authError) return authError;
+  await ensureTables(env);
+  if (!safeId(jobId)) return json({ success: false, error: "Invalid job_id" }, 400);
+
+  const body = await readJson(request).catch(() => ({}));
+  const expectedClaimId = typeof body?.expected_claim_id === "string" && body.expected_claim_id
+    ? body.expected_claim_id
+    : `production_${jobId}`;
+
+  const current = await env.DB.prepare(`
+    SELECT job_id, order_id, status, production_claim_id
+    FROM job_context
+    WHERE job_id = ?
+  `).bind(jobId).first();
+
+  if (!current) return json({ success: false, error: "Job context not found" }, 404);
+
+  if (current.status !== "production_claimed" || current.production_claim_id !== expectedClaimId) {
+    return json({
+      success: false,
+      error: "Job is not in the expected claimed state",
+      current_status: current.status || null,
+      current_claim_id: current.production_claim_id || null,
+      expected_claim_id: expectedClaimId
+    }, 409);
+  }
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='production_ready',
+        production_claim_id=NULL,
+        production_claimed_at=NULL,
+        updated_at=datetime('now')
+    WHERE job_id=?
+      AND status='production_claimed'
+      AND production_claim_id=?
+  `).bind(jobId, expectedClaimId).run();
+
+  const result = await dispatchProductionJobToMake(env, jobId);
+  return json({
+    success: Boolean(result?.dispatched),
+    redispatch: true,
+    job_id: jobId,
+    previous_claim_id: expectedClaimId,
+    dispatch: result
+  }, result?.dispatched ? 200 : 409);
+}
+
+
 async function dispatchReadyJobsToMake(env, orderId) {
   if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) return [];
 
