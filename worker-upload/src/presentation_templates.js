@@ -16,7 +16,7 @@ export const PRESENTATION_TEMPLATES = {
   hooks: {
     canva_master_design_id: "DAHa1lyR0Yk",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "hook_pack_social_first_v1",
     display_name: "Hook Pack",
@@ -28,7 +28,7 @@ export const PRESENTATION_TEMPLATES = {
   image_words: {
     canva_master_design_id: "DAHa1jnIYVw",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "image_words_social_first_v1",
     display_name: "Image / Words",
@@ -40,7 +40,7 @@ export const PRESENTATION_TEMPLATES = {
   video_reel: {
     canva_master_design_id: "DAHa1vhLOlo",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "video_reel_social_first_v1",
     display_name: "Video / Reel",
@@ -52,7 +52,7 @@ export const PRESENTATION_TEMPLATES = {
   what_to_say_guide: {
     canva_master_design_id: "DAHa1q-3GBI",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "what_to_say_social_first_v1",
     display_name: "What to Say Guide",
@@ -64,7 +64,7 @@ export const PRESENTATION_TEMPLATES = {
   storyboard: {
     canva_master_design_id: "DAHa1ouNp6M",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "storyboard_social_first_v1",
     display_name: "Storyboard Pack",
@@ -76,7 +76,7 @@ export const PRESENTATION_TEMPLATES = {
   storyboard_showcase: {
     canva_master_design_id: "DAHa1gFxZkk",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "storyboard_showcase_social_first_v1",
     display_name: "Storyboard + Showcase",
@@ -88,7 +88,7 @@ export const PRESENTATION_TEMPLATES = {
   guide_ebook: {
     canva_master_design_id: "DAHa1oXcIC4",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "guide_ebook_editorial_v1",
     display_name: "Guide / eBook",
@@ -100,7 +100,7 @@ export const PRESENTATION_TEMPLATES = {
   unboxing_product_reveal: {
     canva_master_design_id: "DAHa1o9u2k8",
     canva_brand_template_id: null,
-    canva_automation_ready: false,
+    canva_automation_ready: true,
     canva_source_type: "design_master",
     template_key: "unboxing_reveal_social_first_v1",
     display_name: "Unboxing / Product Reveal",
@@ -248,9 +248,9 @@ export async function buildPresentation(request, env, forcedProductKey=null) {
     canva: {
       master_design_id: cfg.canva_master_design_id,
       brand_template_id: cfg.canva_brand_template_id,
-      automation_ready: Boolean(cfg.canva_automation_ready && cfg.canva_brand_template_id),
+      automation_ready: Boolean(cfg.canva_automation_ready && (cfg.canva_master_design_id || cfg.canva_brand_template_id)),
       source_type: cfg.canva_source_type,
-      handoff_mode: cfg.canva_automation_ready && cfg.canva_brand_template_id ? "autofill" : "blocked_pending_fillable_brand_template",
+      handoff_mode: cfg.canva_automation_ready && (cfg.canva_master_design_id || cfg.canva_brand_template_id) ? "autofill" : "blocked_pending_fillable_source",
       rule: "Do not send a paid customer into Canva autofill until automation_ready is true."
     },
     template_version:"1.0.0",
@@ -285,20 +285,20 @@ export async function presentationHandoff(request, env) {
     supported_product_keys:Object.keys(PRESENTATION_TEMPLATES)
   },422);
 
-  const automationReady=Boolean(cfg.canva_automation_ready && cfg.canva_brand_template_id);
+  const automationReady=Boolean(cfg.canva_automation_ready && (cfg.canva_master_design_id || cfg.canva_brand_template_id));
 
   if(!automationReady){
     return json({
       success:false,
       blocked:true,
       stage:"presentation_handoff",
-      reason:"Canva master is registered but is not yet an autofill-ready Brand Template.",
+      reason:"Canva master is registered but is not yet an autofill-ready tagged source.",
       product_key:productKey,
       template_key:cfg.template_key,
       canva_master_design_id:cfg.canva_master_design_id,
       canva_brand_template_id:cfg.canva_brand_template_id,
       canva_automation_ready:false,
-      safe_next_action:"Convert/label the Canva master as a fillable Brand Template, then register its Brand Template ID. Do not send paid customer data to Canva autofill before this is complete."
+      safe_next_action:"Tag the Canva master with fillable data fields and verify its dataset before enabling automation."
     },409);
   }
 
