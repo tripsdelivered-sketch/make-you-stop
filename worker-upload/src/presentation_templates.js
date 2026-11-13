@@ -28,7 +28,7 @@ export const PRESENTATION_TEMPLATES = {
   image_words: {
     canva_master_design_id: "DAHa1jnIYVw",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "image_words_social_first_v1",
     display_name: "Image / Words",
@@ -40,7 +40,7 @@ export const PRESENTATION_TEMPLATES = {
   video_reel: {
     canva_master_design_id: "DAHa1vhLOlo",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "video_reel_social_first_v1",
     display_name: "Video / Reel",
@@ -52,7 +52,7 @@ export const PRESENTATION_TEMPLATES = {
   what_to_say_guide: {
     canva_master_design_id: "DAHa1q-3GBI",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "what_to_say_social_first_v1",
     display_name: "What to Say Guide",
@@ -64,7 +64,7 @@ export const PRESENTATION_TEMPLATES = {
   storyboard: {
     canva_master_design_id: "DAHa1ouNp6M",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "storyboard_social_first_v1",
     display_name: "Storyboard Pack",
@@ -76,7 +76,7 @@ export const PRESENTATION_TEMPLATES = {
   storyboard_showcase: {
     canva_master_design_id: "DAHa1gFxZkk",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "storyboard_showcase_social_first_v1",
     display_name: "Storyboard + Showcase",
@@ -88,7 +88,7 @@ export const PRESENTATION_TEMPLATES = {
   guide_ebook: {
     canva_master_design_id: "DAHa1oXcIC4",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "guide_ebook_editorial_v1",
     display_name: "Guide / eBook",
@@ -100,7 +100,7 @@ export const PRESENTATION_TEMPLATES = {
   unboxing_product_reveal: {
     canva_master_design_id: "DAHa1o9u2k8",
     canva_brand_template_id: null,
-    canva_automation_ready: true,
+    canva_automation_ready: false,
     canva_source_type: "design_master",
     template_key: "unboxing_reveal_social_first_v1",
     display_name: "Unboxing / Product Reveal",
