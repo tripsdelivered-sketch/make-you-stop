@@ -807,14 +807,14 @@ button:disabled{opacity:.6;cursor:not-allowed}.note{font-size:14px;color:#555;ma
 <h1>Hook Pack — Sandbox Test</h1>
 <p>This page is only for the controlled selling-flow test on <strong>selling-flow-v1</strong>.</p>
 <div class="card">
-<label>What are you promoting?<textarea id="promotion" rows="3">Make You Stop — creative help for creators and small brands</textarea></label>
-<label>Tell us a little about your brand, business or page<textarea id="brand" rows="4">Make You Stop helps creators and brands make short-form content people actually stop for. The focus is strong hooks, emotion, curiosity and clear creative direction.</textarea></label>
-<label>What would you like people to know?<textarea id="message" rows="4">We create practical personalised hooks and creative ideas that help content earn attention instead of being scrolled past.</textarea></label>
+<label>What are you promoting?<textarea id="promotion" rows="3">My beauty creator page and my realistic, affordable beauty content</textarea></label>
+<label>Tell us a little about your brand, business or page<textarea id="brand" rows="4">I create relatable beauty content for women who love makeup and skincare but do not want complicated routines or to buy every viral product. I share GRWM videos, affordable beauty finds, honest product opinions and simple makeup-prep routines that are realistic for everyday life.</textarea></label>
+<label>What would you like people to know?<textarea id="message" rows="4">Beauty does not have to be complicated or expensive. I want to show people practical things they can try, products that may be worth looking at, and small routine changes that can make everyday makeup feel easier.</textarea></label>
 <label>Where will you use it?</label>
 <div class="row"><label><input type="checkbox" name="platform" value="TikTok" checked> TikTok</label><label><input type="checkbox" name="platform" value="Instagram / Reels" checked> Instagram / Reels</label></div>
-<label>What should people do next?<input id="cta" value="Visit the website and explore the creative options"></label>
+<label>What should people do next?<input id="cta" value="Follow my page for realistic beauty routines, honest product finds and simple makeup ideas"></label>
 <label>Approved link or destination<input id="url" value="https://makeyoustop.com"></label>
-<label>Anything else you'd like us to know?<textarea id="notes" rows="3">Keep the hooks clear, human and suitable for TikTok and Instagram Reels.</textarea></label>
+<label>Anything else you'd like us to know?<textarea id="notes" rows="3">I want the hooks to feel conversational and specific to real beauty frustrations or routines. They should create curiosity without sounding like clickbait and should lead naturally into showing a routine, product, comparison or result.</textarea></label>
 <form method="POST" action="/hook-pack-checkout" id="hookCheckoutForm">
 <input type="hidden" name="promotion_subject" id="f_promotion">
 <input type="hidden" name="brand_summary" id="f_brand">
@@ -849,7 +849,7 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
         const form = await request.formData();
         const payload = {
           audience: "creator",
-          niches: ["Creator / Personal Brand"],
+          niches: ["Beauty / Skincare"],
           product_key: "hooks",
           brief: {
             promotion_subject: String(form.get("promotion_subject") || "").trim(),
