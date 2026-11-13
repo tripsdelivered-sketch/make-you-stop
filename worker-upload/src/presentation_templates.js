@@ -14,6 +14,10 @@ const BRAND_SYSTEM = {
 
 export const PRESENTATION_TEMPLATES = {
   hooks: {
+    canva_master_design_id: "DAHa1lyR0Yk",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "hook_pack_social_first_v1",
     display_name: "Hook Pack",
     hero_media: "niche_image_or_creator_mobile_visual",
@@ -22,6 +26,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["10 personalised hooks","Different creative angles","Emotion + curiosity + tension mix","Top 3 highlighted","CTA starters + usage direction"]
   },
   image_words: {
+    canva_master_design_id: "DAHa1jnIYVw",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "image_words_social_first_v1",
     display_name: "Image / Words",
     hero_media: "finished_image_words_creative",
@@ -30,6 +38,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["Finished Image / Words creative","On-image words as part of the concept/story","Platform-ready creative direction"]
   },
   video_reel: {
+    canva_master_design_id: "DAHa1vhLOlo",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "video_reel_social_first_v1",
     display_name: "Video / Reel",
     hero_media: "finished_vertical_video_or_motion_preview",
@@ -38,6 +50,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["Finished short-form Video / Reel","Text/caption-led visual story","No included voiceover, music or platform audio"]
   },
   what_to_say_guide: {
+    canva_master_design_id: "DAHa1q-3GBI",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "what_to_say_social_first_v1",
     display_name: "What to Say Guide",
     hero_media: "niche_creator_or_speaking_visual",
@@ -46,6 +62,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["Practical speaking/message guidance shaped around the brief"]
   },
   storyboard: {
+    canva_master_design_id: "DAHa1ouNp6M",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "storyboard_social_first_v1",
     display_name: "Storyboard Pack",
     hero_media: "storyboard_frames_or_niche_visual",
@@ -54,6 +74,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["2 storyboard directions","Hook + emotional angle","5-stage story flow for each","Shot / visual direction","Payoff + CTA","Simple filming notes"]
   },
   storyboard_showcase: {
+    canva_master_design_id: "DAHa1gFxZkk",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "storyboard_showcase_social_first_v1",
     display_name: "Storyboard + Showcase",
     hero_media: "showcase_frames",
@@ -62,6 +86,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["2 storyboard directions","Selected strongest direction","3–5 showcase frames","Camera / shot guide","Phone filming + framing tips","Payoff + CTA direction"]
   },
   guide_ebook: {
+    canva_master_design_id: "DAHa1oXcIC4",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "guide_ebook_editorial_v1",
     display_name: "Guide / eBook",
     hero_media: "editorial_niche_cover_visual",
@@ -70,6 +98,10 @@ export const PRESENTATION_TEMPLATES = {
     customer_promise: ["Finished personalised guide / eBook shaped around the confirmed brief"]
   },
   unboxing_product_reveal: {
+    canva_master_design_id: "DAHa1o9u2k8",
+    canva_brand_template_id: null,
+    canva_automation_ready: false,
+    canva_source_type: "design_master",
     template_key: "unboxing_reveal_social_first_v1",
     display_name: "Unboxing / Product Reveal",
     hero_media: "product_reveal_visual_or_motion_preview",
@@ -213,6 +245,14 @@ export async function buildPresentation(request, env, forcedProductKey=null) {
   if(built.error)return json({success:false,...built},422);
   return json({success:true,product_key:productKey,deliverable_type:productKey,presentation:{
     template_key:cfg.template_key,
+    canva: {
+      master_design_id: cfg.canva_master_design_id,
+      brand_template_id: cfg.canva_brand_template_id,
+      automation_ready: Boolean(cfg.canva_automation_ready && cfg.canva_brand_template_id),
+      source_type: cfg.canva_source_type,
+      handoff_mode: cfg.canva_automation_ready && cfg.canva_brand_template_id ? "autofill" : "blocked_pending_fillable_brand_template",
+      rule: "Do not send a paid customer into Canva autofill until automation_ready is true."
+    },
     template_version:"1.0.0",
     display_name:cfg.display_name,
     delivery_format:cfg.delivery_format,
