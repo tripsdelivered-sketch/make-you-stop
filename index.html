@@ -509,6 +509,49 @@ $('#brandMegaContinue')?.addEventListener('click',()=>{closeNicheDropdown();$('#
 
 const supportForm=$('#orderSupportForm');if(supportForm)supportForm.addEventListener('submit',e=>{e.preventDefault();const btn=supportForm.querySelector('.support-submit'),note=supportForm.querySelector('.form-note');btn.textContent='Review request ready ✓';note.textContent='Preview only — this will be connected before launch.'});
 const supportToggle=$('#toggleSupportForm'),supportFormPanel=$('#orderSupportForm');if(supportToggle&&supportFormPanel)supportToggle.addEventListener('click',()=>{const isOpen=supportToggle.getAttribute('aria-expanded')==='true';supportToggle.setAttribute('aria-expanded',String(!isOpen));supportFormPanel.hidden=isOpen;supportFormPanel.setAttribute('aria-hidden',String(isOpen));supportToggle.textContent=isOpen?'Submit a review request':'Hide review form'});
+
+function applyReturnOrderContext(){
+  const params=new URLSearchParams(window.location.search);
+  const returnToken=params.get('return_token');
+  const productKey=params.get('product');
+  if(!returnToken)return;
+
+  const shop=$('#shop');
+  if(shop){
+    const banner=document.createElement('div');
+    banner.className='return-customer-banner';
+    banner.innerHTML='<strong>Welcome back to Make You Stop.</strong><span>Your previous creator/brand context is linked to this return visit. Choose the niche or campaign for this order, then continue with the product that fits.</span>';
+    shop.prepend(banner);
+  }
+
+  audience='creator';
+  $('[data-top-audience]').forEach(b=>b.classList.toggle('selected',b.dataset.topAudience==='creator'));
+  $('#shopAudienceLabel').textContent='Creator shop';
+  $('#shopNicheLabel').textContent='Choose the niche or campaign for this next order.';
+  show($('#helpFlow'));
+  show($('#shopResults'));
+
+  const product=catalog.find(p=>p.key===productKey);
+  if(product){
+    primaryKeys=new Set([productKey]);
+    recommendedKeys=new Set();
+    renderProducts();
+    setTimeout(()=>{
+      const row=[...document.querySelectorAll('.shop-list-row')].find(el=>el.querySelector('h3')?.textContent===product.name);
+      if(row){
+        row.classList.add('return-highlight');
+        row.scrollIntoView({behavior:'smooth',block:'center'});
+      } else {
+        $('#shopResults')?.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    },80);
+  } else {
+    renderProducts();
+    setTimeout(()=>$('#shop')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  }
+}
+
 renderCart();
+applyReturnOrderContext();
 </script>
 </body></html>
