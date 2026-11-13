@@ -4,6 +4,7 @@ import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } f
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
 import { createRenderAssetReference, serveRenderAsset } from "./render_assets.js";
 import { ensureAssetIntelligence, upsertAssetIntelligence, createVideoAnalysisSource, videoAnalysisStatus, cleanupVideoAnalysisSource } from "./asset_intelligence.js";
+import { createTrackedLink, followTrackedLink, recordDeliveryEvent, upsertCreatorBrandProfile, orderTrace, buildDeliveryEmail } from "./delivery_experience.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
@@ -758,6 +759,27 @@ export default {
         return createReturnToken(request, env);
       }
 
+      if (request.method === "POST" && path === "/api/delivery-links") {
+        return createTrackedLink(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/delivery-events") {
+        return recordDeliveryEvent(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/creator-brand-profile") {
+        return upsertCreatorBrandProfile(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/delivery-email/build") {
+        return buildDeliveryEmail(request, env);
+      }
+
+      const traceMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/trace$/);
+      if (request.method === "GET" && traceMatch) {
+        return orderTrace(request, env, traceMatch[1]);
+      }
+
       if (request.method === "POST" && path === "/api/download-tokens") {
         return createDownloadToken(request, env);
       }
@@ -1042,6 +1064,11 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
       const customerUploadMatch = path.match(/^\/customer-upload\/([^/]+)$/);
       if (request.method === "GET" && customerUploadMatch) {
         return uploadPage(env, customerUploadMatch[1]);
+      }
+
+      const trackedLinkMatch = path.match(/^\/go\/([^/]+)$/);
+      if (request.method === "GET" && trackedLinkMatch) {
+        return followTrackedLink(request, env, trackedLinkMatch[1]);
       }
 
       const returnMatch = path.match(/^\/return\/([^/]+)$/);
