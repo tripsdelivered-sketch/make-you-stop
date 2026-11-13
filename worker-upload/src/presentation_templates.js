@@ -268,3 +268,56 @@ export async function presentationRegistry(request, env){
   const e=needAuth(request,env); if(e)return e;
   return json({success:true,brand_system:BRAND_SYSTEM,templates:PRESENTATION_TEMPLATES});
 }
+
+
+export async function presentationHandoff(request, env) {
+  const e=needAuth(request,env); if(e)return e;
+  let body; try{body=await request.json()}catch{body=null}
+  if(!body)return json({success:false,error:"Invalid JSON"},400);
+  if(!safeId(body.order_id))return json({success:false,error:"Invalid order_id"},400);
+  if(!safeId(body.job_id))return json({success:false,error:"Invalid job_id"},400);
+
+  const productKey=str(body.product_key,100);
+  const cfg=PRESENTATION_TEMPLATES[productKey];
+  if(!cfg)return json({
+    success:false,
+    error:"Unsupported product_key",
+    supported_product_keys:Object.keys(PRESENTATION_TEMPLATES)
+  },422);
+
+  const automationReady=Boolean(cfg.canva_automation_ready && cfg.canva_brand_template_id);
+
+  if(!automationReady){
+    return json({
+      success:false,
+      blocked:true,
+      stage:"presentation_handoff",
+      reason:"Canva master is registered but is not yet an autofill-ready Brand Template.",
+      product_key:productKey,
+      template_key:cfg.template_key,
+      canva_master_design_id:cfg.canva_master_design_id,
+      canva_brand_template_id:cfg.canva_brand_template_id,
+      canva_automation_ready:false,
+      safe_next_action:"Convert/label the Canva master as a fillable Brand Template, then register its Brand Template ID. Do not send paid customer data to Canva autofill before this is complete."
+    },409);
+  }
+
+  return json({
+    success:true,
+    blocked:false,
+    stage:"presentation_handoff",
+    product_key:productKey,
+    template_key:cfg.template_key,
+    canva_master_design_id:cfg.canva_master_design_id,
+    canva_brand_template_id:cfg.canva_brand_template_id,
+    canva_automation_ready:true,
+    build_endpoint:"/api/presentations/build",
+    autofill_endpoint:"/api/canva/autofills",
+    export_endpoint:"/api/canva/exports",
+    handoff_contract:{
+      required:["order_id","job_id","product_key"],
+      approved_content_rule:"Only approved engine output may be mapped into the presentation. Canva must not rewrite customer deliverables.",
+      customer_delivery_rule:"Do not mark delivered until export, R2 storage and real customer email send succeed."
+    }
+  });
+}
