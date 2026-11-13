@@ -1563,7 +1563,9 @@ export async function productionContext(request, env, jobId) {
   return json({
     success: true,
     contract: "production_context_v1",
+    engine_contract: "make_execution_v1",
     execution_contract: executionContract,
+    engine_context: executionContract,
     job: {
       job_id: job.job_id,
       order_id: job.order_id,
