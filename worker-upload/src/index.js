@@ -5,6 +5,7 @@ import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./cust
 import { createRenderAssetReference, serveRenderAsset } from "./render_assets.js";
 import { ensureAssetIntelligence, upsertAssetIntelligence, createVideoAnalysisSource, videoAnalysisStatus, cleanupVideoAnalysisSource } from "./asset_intelligence.js";
 import { createTrackedLink, followTrackedLink, recordDeliveryEvent, upsertCreatorBrandProfile, orderTrace, buildDeliveryEmail } from "./delivery_experience.js";
+import { buildHookPackPresentation } from "./presentation_templates.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
@@ -773,6 +774,10 @@ export default {
 
       if (request.method === "POST" && path === "/api/delivery-email/build") {
         return buildDeliveryEmail(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/presentations/hooks/build") {
+        return buildHookPackPresentation(request, env);
       }
 
       const traceMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/trace$/);
