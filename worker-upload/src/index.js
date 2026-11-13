@@ -5,7 +5,7 @@ import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./cust
 import { createRenderAssetReference, serveRenderAsset } from "./render_assets.js";
 import { ensureAssetIntelligence, upsertAssetIntelligence, createVideoAnalysisSource, videoAnalysisStatus, cleanupVideoAnalysisSource } from "./asset_intelligence.js";
 import { createTrackedLink, followTrackedLink, recordDeliveryEvent, upsertCreatorBrandProfile, orderTrace, buildDeliveryEmail } from "./delivery_experience.js";
-import { buildHookPackPresentation } from "./presentation_templates.js";
+import { buildHookPackPresentation, buildPresentation, presentationRegistry } from "./presentation_templates.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
@@ -533,6 +533,7 @@ function offersForTypes(types) {
   }
 
   if (set.has("hooks")) {
+    add("hooks", "Order another personalised Hook Pack");
     add("storyboard", "Turn a hook into a Storyboard");
     add("image_words", "Turn a hook into an Image / Words creative");
     add("video_reel", "Turn a hook into a Video / Reel");
@@ -557,7 +558,7 @@ function offersForTypes(types) {
     add("storyboard", "Turn a topic into a Storyboard");
   }
 
-  add("new_order", "Create something new");
+  add("new_order", "Create for a different niche or campaign");
   return [...offers.entries()].map(([slug, label]) => ({ slug, label }));
 }
 
@@ -778,6 +779,14 @@ export default {
 
       if (request.method === "POST" && path === "/api/presentations/hooks/build") {
         return buildHookPackPresentation(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/presentations/build") {
+        return buildPresentation(request, env);
+      }
+
+      if (request.method === "GET" && path === "/api/presentations/registry") {
+        return presentationRegistry(request, env);
       }
 
       const traceMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/trace$/);
