@@ -590,7 +590,7 @@ async function resolveReturn(request, env, token) {
   const offers = offersForTypes(types);
 
   const cards = offers.map((offer) => {
-    const href = `${SHOP_BASE}/?return_token=${encodeURIComponent(token)}&product=${encodeURIComponent(offer.slug)}#shop`;
+    const href = offer.slug === "new_order" ? `${SHOP_BASE}/?return_token=${encodeURIComponent(token)}#shop` : `${SHOP_BASE}/?return_token=${encodeURIComponent(token)}&product=${encodeURIComponent(offer.slug)}#shop`;
     return `<a class="offer" href="${href}">${offer.label}<span>Continue →</span></a>`;
   }).join("");
 
@@ -609,7 +609,7 @@ p{color:#d1d5db;font-size:18px;line-height:1.6}
 .grid{display:grid;gap:12px;margin-top:28px}
 .offer{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;border:1px solid #2b2b31;border-radius:16px;color:#fff;text-decoration:none;background:#151519}
 .offer:hover{border-color:#fff}
-.offer span{color:#a7f3d0;white-space:nowrap}
+.offer span{color:#ff5f4a;white-space:nowrap}
 .note{font-size:13px;color:#9ca3af;margin-top:28px}
 </style>
 </head>
@@ -617,7 +617,7 @@ p{color:#d1d5db;font-size:18px;line-height:1.6}
 <main>
 <small>MAKE YOU STOP</small>
 <h1>Want to take it further?</h1>
-<p>Choose a next step. You can continue from previous creative or start something new. Payment for any new work happens as a new order.</p>
+<p>Choose a next step. Continue from your previous creative, order another personalised product, or start a different niche or campaign. Any new work is placed as a new order.</p>
 <div class="grid">${cards}</div>
 <p class="note">This link does not provide access to your private files or personal details.</p>
 </main>
