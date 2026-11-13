@@ -227,19 +227,36 @@ export async function orderTrace(request, env, orderId) {
   return json({ success:true, order, jobs, deliverables, components, intake_submissions:intake, shopping_intents:shopping, delivery_events:events, tracked_links:links, creator_brand_profiles:profiles });
 }
 
+
 function productCopy(productKey) {
-  if (productKey === "hooks") return {
-    name:"Hook Pack",
-    subject:"Your personalised Hook Pack is ready",
-    intro:"Your personalised Make You Stop Hook Pack is ready.",
-    detail:"Inside are your 10 personalised hooks, Top 3 to test first, creative angles, opening direction, CTA starters and usage guidance."
+  const copy = {
+    hooks: { name:"Hook Pack", subject:"Your personalised Hook Pack is ready", heading:"Your personalised Hook Pack is ready", intro:"Your personalised Make You Stop Hook Pack is ready.", detail:"Inside are your 10 personalised hooks, Top 3 to test first, creative angles, opening direction, CTA starters and usage guidance." },
+    image_words: { name:"Image / Words creative", subject:"Your finished Image / Words creative is ready", heading:"Your finished Image / Words creative is ready", intro:"Your personalised Make You Stop Image / Words creative is ready.", detail:"Open your finished creative and the supporting direction built around your brief and platform." },
+    video_reel: { name:"Video / Reel", subject:"Your finished Video / Reel is ready", heading:"Your finished Video / Reel is ready", intro:"Your personalised Make You Stop Video / Reel is ready.", detail:"Open your finished vertical creative and the supporting guidance for the hook, story progression, on-screen text and platform use." },
+    what_to_say_guide: { name:"What to Say Guide", subject:"Your personalised What to Say Guide is ready", heading:"Your personalised What to Say Guide is ready", intro:"Your personalised Make You Stop What to Say Guide is ready.", detail:"Open your guide for the message structure, opening direction and practical delivery guidance built around your brief." },
+    storyboard: { name:"Storyboard Pack", subject:"Your personalised Storyboard Pack is ready", heading:"Your personalised Storyboard Pack is ready", intro:"Your personalised Make You Stop Storyboard Pack is ready.", detail:"Open your storyboard to see the creative directions, hook, story flow, shot direction, payoff and filming notes." },
+    storyboard_showcase: { name:"Storyboard + Showcase", subject:"Your Storyboard + Showcase is ready", heading:"Your Storyboard + Showcase is ready", intro:"Your personalised Make You Stop Storyboard + Showcase is ready.", detail:"Open your finished presentation to see the story directions, selected direction, showcase frames and filming guidance." },
+    guide_ebook: { name:"Guide / eBook", subject:"Your personalised Guide / eBook is ready", heading:"Your personalised Guide / eBook is ready", intro:"Your personalised Make You Stop Guide / eBook is ready.", detail:"Open your finished guide below." },
+    unboxing_product_reveal: { name:"Unboxing / Product Reveal", subject:"Your Unboxing / Product Reveal creative is ready", heading:"Your Unboxing / Product Reveal creative is ready", intro:"Your personalised Make You Stop Unboxing / Product Reveal creative is ready.", detail:"Open your finished creative direction for the reveal, story beats, shot direction and payoff." }
   };
-  return {
-    name:"creative",
-    subject:"Your Make You Stop creative is ready",
-    intro:"Your Make You Stop creative is ready.",
-    detail:"Open your finished creative below."
-  };
+  return copy[productKey] || { name:"creative", subject:"Your Make You Stop creative is ready", heading:"Your Make You Stop creative is ready", intro:"Your Make You Stop creative is ready.", detail:"Open your finished creative below." };
+}
+
+function nextStepCards(productKey) {
+  const different = ["Create for a different niche or campaign →","Start a new brief while keeping the creator/brand context already on file."];
+  if (productKey === "hooks") return [
+    ["Turn a hook into your next creative →","Take one of your strongest hooks into a Storyboard, Image / Words creative or Video / Reel."],
+    ["Order another personalised Hook Pack →","Get a fresh set of personalised hooks for the same niche, a new campaign, or a different niche."],
+    different
+  ];
+  if (productKey === "storyboard") return [["Add a visual Showcase →","Take the strongest storyboard direction into a visual showcase before filming."],["Turn the idea into a Video / Reel →","Move the strongest story into finished short-form creative."],different];
+  if (productKey === "storyboard_showcase") return [["Turn this concept into a Video / Reel →","Move the selected story and visual direction into finished short-form creative."],["Create another Storyboard →","Plan a new idea with the same saved creator/brand context."],different];
+  if (productKey === "image_words") return [["Build this idea into a Video / Reel →","Take the same creative idea into motion."],["Plan the next idea as a Storyboard →","See the next concept before filming or creating it."],different];
+  if (productKey === "video_reel") return [["Plan another concept →","Use a Storyboard to shape the next idea before production."],["Create another finished creative →","Start another brief using your saved creator/brand context."],different];
+  if (productKey === "guide_ebook") return [["Create another Guide / eBook →","Build another useful resource around a new topic or audience need."],["Turn a topic into a Storyboard →","Move an idea from written guidance into social-first creative direction."],different];
+  if (productKey === "what_to_say_guide") return [["Turn the message into a Storyboard →","See how the message could become a visual social story."],["Create a Hook Pack →","Build personalised openings around the same niche and message."],different];
+  if (productKey === "unboxing_product_reveal") return [["Turn the reveal into a Video / Reel →","Take the reveal direction into finished short-form creative."],["Plan another product story →","Use Storyboard / Showcase for the next product or campaign."],different];
+  return [["Create another personalised creative →","Return to Make You Stop with your saved creator/brand context."],["Explore another format →","Choose the next format that fits your idea."],different];
 }
 
 export async function buildDeliveryEmail(request, env) {
@@ -268,52 +285,51 @@ export async function buildDeliveryEmail(request, env) {
   const terms = safeUrl(env.TERMS_URL) || `${SHOP_BASE}/#terms`;
   const refund = safeUrl(env.REFUND_POLICY_URL) || `${SHOP_BASE}/#refund-policy`;
   const privacy = safeUrl(env.PRIVACY_POLICY_URL) || `${SHOP_BASE}/#privacy`;
+  const cards = nextStepCards(productKey);
+  const cardsHtml = cards.map(([title, detail]) => `<a class="next-card" href="${escapeHtml(upgradeUrl)}"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></a>`).join("");
 
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{margin:0;background:${BRAND.cream};color:${BRAND.ink};font-family:Arial,Helvetica,sans-serif}
-.wrap{max-width:640px;margin:0 auto;padding:24px 14px}.card{background:${BRAND.soft};border:1px solid ${BRAND.line};border-radius:24px;overflow:hidden;box-shadow:0 14px 40px rgba(17,17,17,.08)}
-.head{background:${BRAND.cream};color:${BRAND.ink};padding:36px 28px 30px;text-align:center;border-bottom:1px solid ${BRAND.line}}
+body{margin:0;background:#111;color:#fff;font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:24px 14px}.card{background:#111;border:1px solid #2b2b2b;border-radius:24px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.head{background:#111;color:#fff;padding:40px 28px 32px;text-align:center;border-bottom:1px solid #2b2b2b}
 .brand{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.18em;font-weight:800}
 .brand:before{content:"";width:9px;height:9px;border-radius:50%;background:${BRAND.coral}}
 .head h1{font-size:36px;line-height:1.03;margin:20px auto 0;max-width:500px}.head h1 span{color:${BRAND.coral}}
-.body{padding:30px 28px}.body p{font-size:17px;line-height:1.6;margin:0 0 18px}
+.body{padding:30px 28px}.body p{font-size:17px;line-height:1.6;margin:0 0 18px;color:#f2ece7}
 .kicker{font-size:12px;letter-spacing:.14em;font-weight:800;color:${BRAND.coral};text-transform:uppercase;text-align:center;margin-bottom:10px}
 .top3{background:#fff;border:1px solid ${BRAND.line};border-radius:16px;padding:17px 18px;margin:22px 0;font-size:15px;line-height:1.5}
 .button{display:block;text-align:center;background:${BRAND.coral};color:#fff!important;text-decoration:none;padding:18px 20px;border-radius:999px;font-weight:800;font-size:17px;margin:24px 0}
-.next{border-top:1px solid ${BRAND.line};margin-top:32px;padding-top:28px}.next h2{font-size:25px;margin:0 0 10px;text-align:center}
-.next p{text-align:center}.next-grid{display:grid;gap:10px;margin-top:18px}
-.next-card{display:block;border:1px solid ${BRAND.line};border-radius:16px;padding:16px 18px;text-decoration:none;color:${BRAND.ink};background:#fff;font-weight:700}
-.next-card small{display:block;font-weight:400;color:#6b625b;margin-top:5px;font-size:13px;line-height:1.4}
+.next{border-top:1px solid #2b2b2b;margin-top:34px;padding-top:30px}.next h2{font-size:25px;margin:0 0 10px;text-align:center}
+.next>p{text-align:center;color:#f2ece7}.next-grid{display:grid;gap:10px;margin-top:18px}
+.next-card{display:block;border:1px solid #3a3a3a;border-radius:16px;padding:17px 18px;text-decoration:none;color:#fff;background:#1a1a1a}
+.next-card strong{display:block;color:${BRAND.coral};font-size:15px}.next-card small{display:block;font-weight:400;color:#f2ece7;margin-top:6px;font-size:13px;line-height:1.45}
 .footer{text-align:center;color:#756c64;font-size:12px;line-height:1.8;padding:22px 12px}.footer a{color:#756c64}
 @media(max-width:480px){.wrap{padding:0}.card{border-radius:0;border-left:0;border-right:0}.head{padding:32px 22px 26px}.head h1{font-size:32px}.body{padding:26px 22px}.body p{font-size:16px}}
 </style></head><body><div class="wrap"><div class="card">
-<div class="head"><div class="brand">MAKE YOU STOP</div><div class="kicker">CREATIVE BUILT FOR THE SCROLL.</div><h1>Your personalised <span>Hook Pack</span> is ready</h1></div>
+<div class="head"><div class="brand">MAKE YOU STOP</div><div class="kicker">CREATIVE BUILT FOR THE SCROLL.</div><h1>${escapeHtml(copy.heading)}</h1></div>
 <div class="body"><p>${escapeHtml(copy.intro)}</p><p>${escapeHtml(copy.detail)}</p>
 <a class="button" href="${escapeHtml(openUrl)}">Open your ${escapeHtml(copy.name)}</a>
 <div class="next"><h2>Want to take this further?</h2><p>Keep the momentum going without starting from scratch. Your creator/brand context can carry into the next job.</p>
-<div class="next-grid">
-<a class="next-card" href="${escapeHtml(upgradeUrl)}">Turn a hook into your next creative →<small>Take one of your strongest hooks into a Storyboard, Image / Words creative or Video / Reel.</small></a>
-<a class="next-card" href="${escapeHtml(upgradeUrl)}">Fresh hooks every month →<small>Interested in a new personalised Hook Pack each month? See the recurring Hook option.</small></a>
-<a class="next-card" href="${escapeHtml(upgradeUrl)}">Create something new →<small>Start another brief using the creator/brand context already on file.</small></a>
-</div></div>
+<div class="next-grid">${cardsHtml}</div></div>
 </div></div>
 <div class="footer">Make You Stop · makeyoustop.com<br>
 <a href="${escapeHtml(terms)}">Terms &amp; Conditions</a> · <a href="${escapeHtml(refund)}">Refund Policy</a> · <a href="${escapeHtml(privacy)}">Privacy Policy</a></div>
 </div></body></html>`;
 
-  const text = `${copy.intro}\n\n${copy.detail}\n\nOpen your ${copy.name}: ${openUrl}\n\nWant to take this further?\nTurn a hook into your next creative, get fresh hooks every month, or create something new using your saved creator/brand context.\nSee your next options: ${upgradeUrl}\n\nTerms & Conditions: ${terms}\nRefund Policy: ${refund}\nPrivacy Policy: ${privacy}\n\nMake You Stop · makeyoustop.com`;
+  const text = `${copy.intro}\n\n${copy.detail}\n\nOpen your ${copy.name}: ${openUrl}\n\nWant to take this further?\n${cards.map(([title, detail]) => `${title} ${detail}`).join("\n")}\nSee your next options: ${upgradeUrl}\n\nTerms & Conditions: ${terms}\nRefund Policy: ${refund}\nPrivacy Policy: ${privacy}\n\nMake You Stop · makeyoustop.com`;
 
   await insertEvent(env, body.order_id, body.job_id || null, "delivery_email_built", { product_key:productKey });
 
   return json({
     success:true,
-    delivery_contract_version:1,
+    delivery_contract_version:2,
     subject:copy.subject,
     html,
     text,
-    links:{ delivery:openUrl, upgrade:upgradeUrl, terms, refund_policy:refund, privacy_policy:privacy },
-    presentation:{ mobile_first:true, desktop_friendly:true, max_email_width_px:620 },
+    links:{ delivery:openUrl, upgrade:upgradeUrl, terms, refund_policy:refund, privacy_policy:privacy, shop:`${SHOP_BASE}/#shop` },
+    presentation:{ brand:"make_you_stop", theme:"black_coral", mobile_first:true, desktop_friendly:true, max_email_width_px:620 },
+    tracking:{ delivery_open:true, upgrade_click:true, trace_endpoint:`/api/orders/${body.order_id}/trace` },
     send_state:"not_sent"
   });
 }
