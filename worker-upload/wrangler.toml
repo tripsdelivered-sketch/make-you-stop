@@ -6,7 +6,7 @@ compatibility_date = "2026-10-27"
 MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/jqatv3jugzj2nlreozpfwuuwd21qihq4"
 
 [previews.vars]
-MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/qvf9kqa84waywzvraqm2lg872v6j21hq"
+MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/bf7udgolmy0rjj64x9fnm7cd3hv8hl96"
 
 [[r2_buckets]]
 binding = "BUCKET"
