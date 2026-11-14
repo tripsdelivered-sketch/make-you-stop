@@ -2,6 +2,12 @@ name = "make-you-stop-upload"
 main = "src/index.js"
 compatibility_date = "2026-10-27"
 
+[vars]
+MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/jqatv3jugzj2nlreozpfwuuwd21qihq4"
+
+[previews.vars]
+MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/vxxhx9yxa17esgwidwcvn8u1gj2f2rju"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "make-you-stop-deliverables"
@@ -13,6 +19,11 @@ database_id = "30a78783-9720-4e34-b729-8d4c0e2b36a9"
 
 [stream]
 binding = "STREAM"
+
+[[previews.d1_databases]]
+binding = "DB"
+database_name = "make-you-stop"
+database_id = "30a78783-9720-4e34-b729-8d4c0e2b36a9"
 
 [previews.stream]
 binding = "STREAM"

@@ -221,11 +221,33 @@ export async function canvaTemplateDataset(request, env, templateId) {
 export async function canvaAutofill(request, env) {
   const e = needAuth(request,env); if (e) return e;
   let body; try { body=await request.json(); } catch { body=null; }
-  if (!body || !body.brand_template_id || !body.data) return json({success:false,error:"brand_template_id and data are required"},400);
-  const payload = {brand_template_id:body.brand_template_id,data:body.data};
-  if (body.title) payload.title=String(body.title).slice(0,200);
+  if (!body || !body.data) return json({success:false,error:"data is required"},400);
+
+  const hasBrandTemplate = Boolean(body.brand_template_id);
+  const hasDesign = Boolean(body.design_id);
+  if (hasBrandTemplate === hasDesign) {
+    return json({success:false,error:"Provide exactly one of brand_template_id or design_id"},400);
+  }
+
+  const payload = {data:body.data};
+
+  if (hasDesign) {
+    payload.type = body.update_in_place ? "update_design" : "create_from_design";
+    payload.design_id = String(body.design_id);
+  } else {
+    payload.type = "create_from_brand_template";
+    payload.brand_template_id = String(body.brand_template_id);
+  }
+
+  if (body.title && !body.update_in_place) payload.title=String(body.title).slice(0,200);
+
   const result = await canvaFetch(env,"/autofills",{method:"POST",body:JSON.stringify(payload)});
-  return json({success:true,result});
+  return json({
+    success:true,
+    source_type:hasDesign ? "design" : "brand_template",
+    autofill_mode:payload.type,
+    result
+  });
 }
 
 export async function canvaExport(request, env) {

@@ -1,9 +1,11 @@
-import { resolveProduct, upsertStripeProductMapping, createShoppingIntent, expandOrder, startIntakeFromCheckout, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, productionContext, readyJobs, commerceStatus } from "./commerce_orchestration.js";
+import { resolveProduct, upsertStripeProductMapping, createShoppingIntent, expandOrder, startIntakeFromCheckout, createIntakeToken, resolveIntakeToken, submitIntake, jobContext, claimProductionJob, productionContext, redispatchProductionJob, readyJobs, commerceStatus } from "./commerce_orchestration.js";
 import { canvaStatus, canvaAuthStart, canvaCallback, canvaCreateDesign, canvaBrandTemplates, canvaTemplateDataset, canvaAutofill, canvaExport, canvaExportStatus, canvaExportWait, canvaExportStore } from "./canva_bridge.js";
 import { registerVisual, markVisualUsed, visualCandidates, recentVisualUsage } from "./visual_memory.js";
 import { createUploadSession, uploadPage, uploadFile, orderAssets } from "./customer_uploads.js";
 import { createRenderAssetReference, serveRenderAsset } from "./render_assets.js";
 import { ensureAssetIntelligence, upsertAssetIntelligence, createVideoAnalysisSource, videoAnalysisStatus, cleanupVideoAnalysisSource } from "./asset_intelligence.js";
+import { createTrackedLink, followTrackedLink, recordDeliveryEvent, upsertCreatorBrandProfile, orderTrace, buildDeliveryEmail } from "./delivery_experience.js";
+import { buildHookPackPresentation, buildPresentation, presentationRegistry, presentationHandoff } from "./presentation_templates.js";
 
 const BUCKET_NAME = "make-you-stop-deliverables";
 const MAX_KEY_LENGTH = 512;
@@ -531,6 +533,7 @@ function offersForTypes(types) {
   }
 
   if (set.has("hooks")) {
+    add("hooks", "Order another personalised Hook Pack");
     add("storyboard", "Turn a hook into a Storyboard");
     add("image_words", "Turn a hook into an Image / Words creative");
     add("video_reel", "Turn a hook into a Video / Reel");
@@ -555,7 +558,7 @@ function offersForTypes(types) {
     add("storyboard", "Turn a topic into a Storyboard");
   }
 
-  add("new_order", "Create something new");
+  add("new_order", "Create for a different niche or campaign");
   return [...offers.entries()].map(([slug, label]) => ({ slug, label }));
 }
 
@@ -587,7 +590,7 @@ async function resolveReturn(request, env, token) {
   const offers = offersForTypes(types);
 
   const cards = offers.map((offer) => {
-    const href = `${SHOP_BASE}/?return_token=${encodeURIComponent(token)}&product=${encodeURIComponent(offer.slug)}#shop`;
+    const href = offer.slug === "new_order" ? `${SHOP_BASE}/?return_token=${encodeURIComponent(token)}#shop` : `${SHOP_BASE}/?return_token=${encodeURIComponent(token)}&product=${encodeURIComponent(offer.slug)}#shop`;
     return `<a class="offer" href="${href}">${offer.label}<span>Continue →</span></a>`;
   }).join("");
 
@@ -606,7 +609,7 @@ p{color:#d1d5db;font-size:18px;line-height:1.6}
 .grid{display:grid;gap:12px;margin-top:28px}
 .offer{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;border:1px solid #2b2b31;border-radius:16px;color:#fff;text-decoration:none;background:#151519}
 .offer:hover{border-color:#fff}
-.offer span{color:#a7f3d0;white-space:nowrap}
+.offer span{color:#ff5f4a;white-space:nowrap}
 .note{font-size:13px;color:#9ca3af;margin-top:28px}
 </style>
 </head>
@@ -614,7 +617,7 @@ p{color:#d1d5db;font-size:18px;line-height:1.6}
 <main>
 <small>MAKE YOU STOP</small>
 <h1>Want to take it further?</h1>
-<p>Choose a next step. You can continue from previous creative or start something new. Payment for any new work happens as a new order.</p>
+<p>Choose a next step. Continue from your previous creative, order another personalised product, or start a different niche or campaign. Any new work is placed as a new order.</p>
 <div class="grid">${cards}</div>
 <p class="note">This link does not provide access to your private files or personal details.</p>
 </main>
@@ -758,6 +761,43 @@ export default {
         return createReturnToken(request, env);
       }
 
+      if (request.method === "POST" && path === "/api/delivery-links") {
+        return createTrackedLink(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/delivery-events") {
+        return recordDeliveryEvent(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/creator-brand-profile") {
+        return upsertCreatorBrandProfile(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/delivery-email/build") {
+        return buildDeliveryEmail(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/presentations/hooks/build") {
+        return buildHookPackPresentation(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/presentations/build") {
+        return buildPresentation(request, env);
+      }
+
+      if (request.method === "GET" && path === "/api/presentations/registry") {
+        return presentationRegistry(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/presentations/handoff") {
+        return presentationHandoff(request, env);
+      }
+
+      const traceMatch = path.match(/^\/api\/orders\/([A-Za-z0-9_-]+)\/trace$/);
+      if (request.method === "GET" && traceMatch) {
+        return orderTrace(request, env, traceMatch[1]);
+      }
+
       if (request.method === "POST" && path === "/api/download-tokens") {
         return createDownloadToken(request, env);
       }
@@ -786,6 +826,104 @@ export default {
         return createRenderAssetReference(request, env, RETURN_BASE);
       }
 
+
+      if (request.method === "GET" && path === "/hook-pack-test") {
+        return html(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Make You Stop — Hook Pack Sandbox Test</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.45}
+h1{font-size:32px;margin-bottom:8px}.card{border:1px solid #ddd;border-radius:18px;padding:24px;margin-top:24px}
+label{display:block;font-weight:700;margin-top:18px}textarea,input{width:100%;box-sizing:border-box;padding:12px;margin-top:7px;border:1px solid #bbb;border-radius:10px;font:inherit}
+.row{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}.row label{font-weight:400;margin:0}
+button{margin-top:24px;padding:14px 18px;border:0;border-radius:12px;background:#111;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}.note{font-size:14px;color:#555;margin-top:12px}.status{font-weight:700;margin-top:14px}
+</style>
+</head>
+<body>
+<h1>Hook Pack — Sandbox Test</h1>
+<p>This page is only for the controlled selling-flow test on <strong>selling-flow-v1</strong>.</p>
+<div class="card">
+<label>What are you promoting?<textarea id="promotion" rows="3">My beauty creator page and my realistic, affordable beauty content</textarea></label>
+<label>Tell us a little about your brand, business or page<textarea id="brand" rows="4">I create relatable beauty content for women who love makeup and skincare but do not want complicated routines or to buy every viral product. I share GRWM videos, affordable beauty finds, honest product opinions and simple makeup-prep routines that are realistic for everyday life.</textarea></label>
+<label>What would you like people to know?<textarea id="message" rows="4">Beauty does not have to be complicated or expensive. I want to show people practical things they can try, products that may be worth looking at, and small routine changes that can make everyday makeup feel easier.</textarea></label>
+<label>Where will you use it?</label>
+<div class="row"><label><input type="checkbox" name="platform" value="TikTok" checked> TikTok</label><label><input type="checkbox" name="platform" value="Instagram / Reels" checked> Instagram / Reels</label></div>
+<label>What should people do next?<input id="cta" value="Follow my page for realistic beauty routines, honest product finds and simple makeup ideas"></label>
+<label>Approved link or destination<input id="url" value="https://makeyoustop.com"></label>
+<label>Anything else you'd like us to know?<textarea id="notes" rows="3">I want the hooks to feel conversational and specific to real beauty frustrations or routines. They should create curiosity without sounding like clickbait and should lead naturally into showing a routine, product, comparison or result.</textarea></label>
+<form method="POST" action="/hook-pack-checkout" id="hookCheckoutForm">
+<input type="hidden" name="promotion_subject" id="f_promotion">
+<input type="hidden" name="brand_summary" id="f_brand">
+<input type="hidden" name="key_message" id="f_message">
+<input type="hidden" name="platforms" id="f_platforms">
+<input type="hidden" name="cta" id="f_cta">
+<input type="hidden" name="destination_url" id="f_url">
+<input type="hidden" name="extra_notes" id="f_notes">
+<button id="go" type="submit">Continue to Stripe Sandbox</button>
+</form>
+<div id="status" class="status">Ready.</div>
+<div class="note">No real money is used. This creates the shopping intent first, then opens the existing Hook Pack Stripe Sandbox checkout.</div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
+  $('#status').textContent='Preparing secure checkout…';
+  $('#go').disabled=true;
+  $('#f_promotion').value=$('#promotion').value.trim();
+  $('#f_brand').value=$('#brand').value.trim();
+  $('#f_message').value=$('#message').value.trim();
+  $('#f_platforms').value=[...document.querySelectorAll('input[name=platform]:checked')].map(x=>x.value).join('|');
+  $('#f_cta').value=$('#cta').value.trim();
+  $('#f_url').value=$('#url').value.trim();
+  $('#f_notes').value=$('#notes').value.trim();
+});
+</script>
+</body></html>`);
+      }
+
+      if (request.method === "POST" && path === "/hook-pack-checkout") {
+        const form = await request.formData();
+        const payload = {
+          audience: "creator",
+          niches: ["Beauty / Skincare"],
+          product_key: "hooks",
+          brief: {
+            promotion_subject: String(form.get("promotion_subject") || "").trim(),
+            brand_summary: String(form.get("brand_summary") || "").trim(),
+            key_message: String(form.get("key_message") || "").trim(),
+            platforms: String(form.get("platforms") || "").split("|").map((v) => v.trim()).filter(Boolean),
+            cta: String(form.get("cta") || "").trim(),
+            destination_url: String(form.get("destination_url") || "").trim(),
+            extra_notes: String(form.get("extra_notes") || "").trim()
+          },
+          source: "website"
+        };
+
+        const intentRequest = new Request(new URL("/api/shop-intents", request.url), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const intentResponse = await createShoppingIntent(intentRequest, env);
+        const intentData = await intentResponse.json().catch(() => ({}));
+
+        if (!intentResponse.ok || !intentData.success || !intentData.intent_id) {
+          return html(`<!doctype html><html><body style="font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px">
+          <h1>Checkout setup error</h1>
+          <p><strong>${String(intentData.error || "Unable to prepare checkout")}</strong></p>
+          <pre style="white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:12px">${String(intentData.detail || "No backend detail returned.")}</pre>
+          <p><a href="/hook-pack-test">Back to Hook Pack test</a></p>
+          </body></html>`, intentResponse.status || 500);
+        }
+
+        const stripe = new URL("https://buy.stripe.com/test_14A00i1Q1azJ2YE5b6fMA02");
+        stripe.searchParams.set("client_reference_id", intentData.intent_id);
+        return Response.redirect(stripe.toString(), 303);
+      }
 
       if (request.method === "GET" && path === "/api/commerce/status") {
         return commerceStatus(request, env);
@@ -841,6 +979,16 @@ export default {
       const jobContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/context$/);
       if (request.method === "GET" && jobContextMatch) {
         return jobContext(request, env, jobContextMatch[1]);
+      }
+
+      const productionClaimMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/claim$/);
+      if (request.method === "POST" && productionClaimMatch) {
+        return claimProductionJob(request, env, productionClaimMatch[1]);
+      }
+
+      const productionRedispatchMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/redispatch$/);
+      if (request.method === "POST" && productionRedispatchMatch) {
+        return redispatchProductionJob(request, env, productionRedispatchMatch[1]);
       }
 
       const productionContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/production-context$/);
@@ -934,6 +1082,11 @@ export default {
       const customerUploadMatch = path.match(/^\/customer-upload\/([^/]+)$/);
       if (request.method === "GET" && customerUploadMatch) {
         return uploadPage(env, customerUploadMatch[1]);
+      }
+
+      const trackedLinkMatch = path.match(/^\/go\/([^/]+)$/);
+      if (request.method === "GET" && trackedLinkMatch) {
+        return followTrackedLink(request, env, trackedLinkMatch[1]);
       }
 
       const returnMatch = path.match(/^\/return\/([^/]+)$/);

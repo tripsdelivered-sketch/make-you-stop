@@ -58,11 +58,50 @@ function expiresAfterHours(hours) {
   return d.toISOString();
 }
 
+const PRODUCT_KEY_ALIASES = {
+  hook: "hooks",
+  hook_pack: "hooks",
+  personalised_hook: "hooks",
+  image_words_pack: "image_words",
+  what_to_say: "what_to_say_guide",
+  storyboard_pack: "storyboard",
+  unboxing: "unboxing_product_reveal"
+};
+
+function canonicalProductKey(value) {
+  if (!safeId(value)) return null;
+  return PRODUCT_KEY_ALIASES[value] || value;
+}
+
+const SEEDED_STRIPE_MAPPINGS = [
+  { mapping_key: "price:price_1UZ90pBG3Bv4a9NrwDdEYWgo", product_key: "hooks" },
+  { mapping_key: "product:prod_VaJe6zShQaEYHG", product_key: "hooks" },
+  { mapping_key: "payment_link:plink_1UZ9JZBG3Bv4a9NrTrwe8Hi4", product_key: "hooks" },
+  { mapping_key: "price:price_1UZ94DBG3Bv4a9Nr4bM8aB6X", product_key: "image_words" },
+  { mapping_key: "product:prod_VaJhqJY7VC3kug", product_key: "image_words" },
+  { mapping_key: "price:price_1UZ96CBG3Bv4a9NrzvsxrxUK", product_key: "what_to_say_guide" },
+  { mapping_key: "product:prod_VaJjS6v1FnzCe6", product_key: "what_to_say_guide" },
+  { mapping_key: "price:price_1UZ97oBG3Bv4a9Nr48BGaQFc", product_key: "storyboard" },
+  { mapping_key: "product:prod_VaJlrDGGKFy1w1", product_key: "storyboard" },
+  { mapping_key: "price:price_1UZ99UBG3Bv4a9NrCWZ8hXXb", product_key: "storyboard_showcase" },
+  { mapping_key: "product:prod_VaJnl9rPu4KRau", product_key: "storyboard_showcase" },
+  { mapping_key: "price:price_1UZ9B0BG3Bv4a9Nrd7sVeDjD", product_key: "unboxing_product_reveal" },
+  { mapping_key: "product:prod_VaJoG1WjYBlu6L", product_key: "unboxing_product_reveal" },
+  { mapping_key: "price:price_1UZ9CiBG3Bv4a9NroH0bknz8", product_key: "video_reel" },
+  { mapping_key: "product:prod_VaJqVDVdi4316S", product_key: "video_reel" },
+  { mapping_key: "price:price_1UZ3dfBG3Bv4a9NrJILRsKTP", product_key: "guide_ebook" },
+  { mapping_key: "product:prod_VaE5LXVqUxXRR1", product_key: "guide_ebook" }
+];
+
 const CORE_MANIFESTS = [
   {
     product_key: "hooks",
     display_name: "Hook Pack",
-    manifest_version: 1,
+    manifest_version: 2,
+    output_requirements: {
+      quantity: 10,
+      required_sections: ["top_3_highlights", "cta_starters", "usage_notes"]
+    },
     jobs: [
       { job_key: "hooks", role: "primary", deliverable_type: "hooks", requested_lane: "hooks", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
@@ -205,6 +244,8 @@ async function ensureTables(env) {
       manifest_version INTEGER NOT NULL DEFAULT 1,
       status TEXT NOT NULL DEFAULT 'awaiting_intake',
       intake_status TEXT NOT NULL DEFAULT 'pending',
+      production_claim_id TEXT,
+      production_claimed_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
@@ -236,6 +277,7 @@ async function ensureTables(env) {
       niches_json TEXT NOT NULL DEFAULT '[]',
       needs_json TEXT NOT NULL DEFAULT '[]',
       goal TEXT,
+      brief_json TEXT NOT NULL DEFAULT '{}',
       selected_product_key TEXT NOT NULL,
       source TEXT,
       active INTEGER NOT NULL DEFAULT 1,
@@ -262,6 +304,45 @@ async function ensureTables(env) {
   const jobContextCols = await tableColumns(env, "job_context");
   if (!jobContextCols.has("deliverable_id")) {
     await env.DB.prepare("ALTER TABLE job_context ADD COLUMN deliverable_id TEXT").run();
+  }
+  if (!jobContextCols.has("production_claim_id")) {
+    await env.DB.prepare("ALTER TABLE job_context ADD COLUMN production_claim_id TEXT").run();
+  }
+  if (!jobContextCols.has("production_claimed_at")) {
+    await env.DB.prepare("ALTER TABLE job_context ADD COLUMN production_claimed_at TEXT").run();
+  }
+
+  const shoppingIntentCols = await tableColumns(env, "shopping_intents");
+  const shoppingIntentMigrations = [
+    ["audience", "TEXT"],
+    ["niches_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["needs_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["goal", "TEXT"],
+    ["brief_json", "TEXT NOT NULL DEFAULT '{}'"],
+    ["selected_product_key", "TEXT"],
+    ["source", "TEXT"],
+    ["active", "INTEGER NOT NULL DEFAULT 1"],
+    ["order_id", "TEXT"],
+    ["checkout_session_id", "TEXT"],
+    ["created_at", "TEXT"],
+    ["expires_at", "TEXT"],
+    ["consumed_at", "TEXT"]
+  ];
+  for (const [column, definition] of shoppingIntentMigrations) {
+    if (!shoppingIntentCols.has(column)) {
+      await env.DB.prepare(`ALTER TABLE shopping_intents ADD COLUMN ${column} ${definition}`).run();
+    }
+  }
+
+  for (const mapping of SEEDED_STRIPE_MAPPINGS) {
+    await env.DB.prepare(`
+      INSERT INTO stripe_product_mappings (mapping_key, product_key, active, created_at, updated_at)
+      VALUES (?, ?, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(mapping_key) DO UPDATE SET
+        product_key = excluded.product_key,
+        active = 1,
+        updated_at = datetime('now')
+    `).bind(mapping.mapping_key, mapping.product_key).run();
   }
 
   for (const manifest of CORE_MANIFESTS) {
@@ -353,7 +434,7 @@ function extractStripePurchaseKeys(body) {
 }
 
 async function resolveManifest(env, body) {
-  let productKey = safeId(body?.product_key) ? body.product_key : null;
+  let productKey = canonicalProductKey(body?.product_key);
 
   if (!productKey) {
     const candidates = extractStripePurchaseKeys(body);
@@ -363,7 +444,7 @@ async function resolveManifest(env, body) {
         "SELECT product_key FROM stripe_product_mappings WHERE mapping_key = ? AND active = 1"
       ).bind(mappingKey).first();
       if (mapping?.product_key) {
-        productKey = mapping.product_key;
+        productKey = canonicalProductKey(mapping.product_key);
         break;
       }
     }
@@ -404,22 +485,271 @@ function cleanTextList(value, maxItems = 8, maxLength = 120) {
     .slice(0, maxItems);
 }
 
-export async function createShoppingIntent(request, env) {
-  await ensureTables(env);
-
-  const body = await readJson(request);
-  if (!body || !safeId(body.product_key)) {
-    return publicJson({ success: false, error: "Invalid product_key" }, 400);
+function cleanBrief(value) {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const out = {};
+  const textFields = [
+    "promotion_subject",
+    "brand_summary",
+    "key_message",
+    "cta",
+    "destination_type",
+    "destination_url",
+    "action_instruction",
+    "extra_notes",
+    "audience_detail",
+    "guide_outcome",
+    "must_include",
+    "filming_plan",
+    "asset_status",
+    "template_key"
+  ];
+  for (const key of textFields) {
+    const cleaned = cleanText(input[key], key === "extra_notes" || key === "must_include" ? 2000 : 800);
+    if (cleaned) out[key] = cleaned;
   }
+  const platforms = cleanTextList(input.platforms, 8, 80);
+  if (platforms.length) out.platforms = platforms;
+  return out;
+}
 
-  const manifest = await resolveManifest(env, { product_key: body.product_key });
-  if (!manifest) return publicJson({ success: false, error: "Unknown product_key" }, 404);
+const MAKE_LANE_BY_CANONICAL = {
+  hooks: "Hooks only",
+  image_words: "Image",
+  video_reel: "video_reel",
+  guide_ebook: "Guide / eBook",
+  storyboard: "storyboard",
+  storyboard_showcase: "storyboard_showcase",
+  what_to_say_guide: "What to Say Guide",
+  unboxing_product_reveal: "Unboxing / Product Reveal",
+  "Storyboard / Showcase": "Storyboard / Showcase"
+};
+
+function makeRequestedLane(value) {
+  const lane = typeof value === "string" ? value.trim() : "";
+  return MAKE_LANE_BY_CANONICAL[lane] || lane || null;
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function firstListValue(value) {
+  return Array.isArray(value) && value.length ? value[0] : null;
+}
+
+function makeExecutionContract({ job, order, manifest, shoppingIntent, intake, intakePayload, assets }) {
+  const brief = shoppingIntent?.brief && typeof shoppingIntent.brief === "object"
+    ? shoppingIntent.brief
+    : {};
+  const payload = intakePayload && typeof intakePayload === "object" && !Array.isArray(intakePayload)
+    ? intakePayload
+    : {};
+  const platform = firstText(
+    firstListValue(brief.platforms),
+    firstListValue(payload.platforms),
+    payload.platform
+  );
+  const promotedSubject = firstText(
+    brief.promotion_subject,
+    payload.promoted_subject,
+    payload.promotion_subject
+  );
+  const briefText = firstText(
+    brief.key_message,
+    payload.brief,
+    payload.key_message,
+    brief.brand_summary
+  );
+  const audience = firstText(
+    shoppingIntent?.audience,
+    brief.audience_detail,
+    payload.audience
+  );
+  const desiredOutcome = firstText(
+    shoppingIntent?.goal,
+    brief.guide_outcome,
+    brief.cta,
+    payload.desired_outcome,
+    payload.cta
+  );
+  const additionalNotes = firstText(
+    brief.extra_notes,
+    payload.additional_notes,
+    payload.extra_notes
+  );
+  const brandName = firstText(payload.brand_name, payload.name_or_brand_name);
+  const brandContext = firstText(brief.brand_summary, payload.brand_summary, payload.brand_context);
+  const customerName = firstText(payload.customer_name, payload.full_name);
+  const assetUsePolicy = firstText(payload.asset_use_policy, payload.asset_policy);
+  const approvedClaims = payload.approved_claims || null;
+  const ctaAction = firstText(brief.cta, payload.cta);
+  const ctaDestinationType = firstText(brief.destination_type, payload.destination_type);
+  const ctaDestinationValue = firstText(brief.destination_url, payload.destination_url);
+  const approvedPurchaseInstruction = firstText(brief.action_instruction, payload.action_instruction);
+  const importantInclusions = payload.important_inclusions || brief.must_include || null;
+  const thingsToAvoid = payload.things_to_avoid || null;
+  const productionObjective = firstText(payload.production_objective, desiredOutcome);
+  const productionDirection = firstText(payload.production_direction, brief.key_message, payload.key_message);
+  const assetManifest = assets.map((asset) => ({
+    asset_id: asset.asset_id,
+    order_id: asset.order_id,
+    job_id: asset.job_id,
+    customer_id: asset.customer_id || null,
+    brand_id: asset.brand_id || null,
+    original_name: asset.original_name || null,
+    mime_type: asset.mime_type,
+    size_bytes: asset.size_bytes == null ? null : Number(asset.size_bytes),
+    reuse_permission: asset.reuse_permission,
+    source_type: asset.source_type,
+    created_at: asset.created_at
+  }));
+
+  return {
+    contract: "make_execution_v1",
+    job_id: job.job_id,
+    order_id: job.order_id,
+    parent_job_id: job.parent_job_id || null,
+    deliverable_id: job.deliverable_id || null,
+    product_key: job.product_key,
+    deliverable_type: job.deliverable_type,
+    component_type: job.component_type || null,
+    job_role: job.job_role,
+    sequence_index: Number(job.sequence_index || 1),
+    delivery_order: Number(job.delivery_order || 1),
+    canonical_requested_lane: job.requested_lane,
+    requested_lane: makeRequestedLane(job.requested_lane),
+    manifest,
+    output_requirements: manifest?.output_requirements || null,
+
+    customer_name: customerName,
+    brand_name: brandName,
+    product_selected: order?.product_selected || null,
+    promoted_subject: promotedSubject,
+    brief: briefText,
+    platform,
+    audience,
+    desired_outcome: desiredOutcome,
+    production_objective: productionObjective,
+    production_direction: productionDirection,
+    important_inclusions: importantInclusions,
+    things_to_avoid: thingsToAvoid,
+    additional_notes: additionalNotes,
+    asset_manifest: assetManifest,
+    supplied_assets: assetManifest,
+    asset_use_policy: assetUsePolicy,
+
+    cta: {
+      desired_customer_action: ctaAction || desiredOutcome,
+      destination_type: ctaDestinationType,
+      destination_value: ctaDestinationValue,
+      approved_purchase_instruction: approvedPurchaseInstruction,
+      approved_claims: approvedClaims
+    },
+
+    assets: {
+      manifest: assetManifest,
+      supplied_assets: assetManifest,
+      asset_use_policy: assetUsePolicy
+    },
+
+    customer_context: {
+      customer_id: order?.customer_id || null,
+      brand_id: order?.brand_id || null,
+      customer_email: order?.customer_email || null,
+      customer_name: customerName,
+      brand_name: brandName,
+      product_selected: order?.product_selected || null,
+      promoted_subject: promotedSubject,
+      brief: briefText,
+      brand_context: brandContext,
+      platform,
+      audience,
+      desired_outcome: desiredOutcome,
+      important_inclusions: importantInclusions,
+      things_to_avoid: thingsToAvoid,
+      additional_notes: additionalNotes,
+      asset_use_policy: assetUsePolicy,
+      cta_action: ctaAction,
+      cta_destination_type: ctaDestinationType,
+      cta_destination_value: ctaDestinationValue,
+      approved_purchase_instruction: approvedPurchaseInstruction,
+      approved_claims: approvedClaims
+    },
+    shopping_intent: shoppingIntent,
+    intake: intake ? {
+      submission_id: intake.submission_id,
+      created_at: intake.created_at,
+      payload: intakePayload
+    } : null
+  };
+}
+
+async function ensureShoppingIntentTable(env) {
+  if (!env.DB) throw new Error("D1 binding is not configured");
+
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS shopping_intents (
+    intent_id TEXT PRIMARY KEY,
+    audience TEXT,
+    niches_json TEXT NOT NULL DEFAULT '[]',
+    needs_json TEXT NOT NULL DEFAULT '[]',
+    goal TEXT,
+    brief_json TEXT NOT NULL DEFAULT '{}',
+    selected_product_key TEXT,
+    source TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    order_id TEXT,
+    checkout_session_id TEXT,
+    created_at TEXT,
+    expires_at TEXT,
+    consumed_at TEXT
+  )`).run();
+
+  const cols = await tableColumns(env, "shopping_intents");
+  const migrations = [
+    ["audience", "TEXT"],
+    ["niches_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["needs_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["goal", "TEXT"],
+    ["brief_json", "TEXT NOT NULL DEFAULT '{}'"],
+    ["selected_product_key", "TEXT"],
+    ["source", "TEXT"],
+    ["active", "INTEGER NOT NULL DEFAULT 1"],
+    ["order_id", "TEXT"],
+    ["checkout_session_id", "TEXT"],
+    ["created_at", "TEXT"],
+    ["expires_at", "TEXT"],
+    ["consumed_at", "TEXT"]
+  ];
+  for (const [column, definition] of migrations) {
+    if (!cols.has(column)) {
+      await env.DB.prepare(`ALTER TABLE shopping_intents ADD COLUMN ${column} ${definition}`).run();
+    }
+  }
+}
+
+export async function createShoppingIntent(request, env) {
+  try {
+    await ensureShoppingIntentTable(env);
+
+    const body = await readJson(request);
+    if (!body || !safeId(body.product_key)) {
+      return publicJson({ success: false, error: "Invalid product_key" }, 400);
+    }
+
+    const canonicalKey = canonicalProductKey(body.product_key);
+    const coreManifest = CORE_MANIFESTS.find((item) => item.product_key === canonicalKey);
+    if (!coreManifest) return publicJson({ success: false, error: "Unknown product_key" }, 404);
 
   const allowedAudiences = new Set(["creator", "small-business", "brand"]);
   const audience = allowedAudiences.has(body.audience) ? body.audience : null;
   const niches = cleanTextList(body.niches ?? (body.niche ? [body.niche] : []), 5, 80);
   const needs = cleanTextList(body.needs ?? (body.need ? [body.need] : []), 8, 120);
   const goal = cleanText(body.goal, 160);
+  const brief = cleanBrief(body.brief);
   const source = cleanText(body.source, 80) || "website";
 
   const intentId = `intent_${token(18)}`;
@@ -427,26 +757,35 @@ export async function createShoppingIntent(request, env) {
 
   await env.DB.prepare(`
     INSERT INTO shopping_intents (
-      intent_id, audience, niches_json, needs_json, goal,
+      intent_id, audience, niches_json, needs_json, goal, brief_json,
       selected_product_key, source, active, created_at, expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?)
   `).bind(
     intentId,
     audience,
     JSON.stringify(niches),
     JSON.stringify(needs),
     goal,
-    manifest.product_key,
+    JSON.stringify(brief),
+    coreManifest.product_key,
     source,
     expiresAt
   ).run();
 
-  return publicJson({
-    success: true,
-    intent_id: intentId,
-    product_key: manifest.product_key,
-    expires_at: expiresAt
-  });
+    return publicJson({
+      success: true,
+      intent_id: intentId,
+      product_key: coreManifest.product_key,
+      expires_at: expiresAt
+    });
+  } catch (error) {
+    console.error("createShoppingIntent failed", error);
+    return publicJson({
+      success: false,
+      error: "Unable to prepare checkout",
+      detail: String(error?.message || error || "Unknown error").slice(0, 240)
+    }, 500);
+  }
 }
 
 async function attachShoppingIntent(env, body, orderId, resolved) {
@@ -495,6 +834,7 @@ async function attachShoppingIntent(env, body, orderId, resolved) {
     niches: JSON.parse(row.niches_json || "[]"),
     needs: JSON.parse(row.needs_json || "[]"),
     goal: row.goal || null,
+    brief: JSON.parse(row.brief_json || "{}"),
     selected_product_key: row.selected_product_key,
     source: row.source || null
   };
@@ -604,6 +944,55 @@ async function updateOrderManifest(env, orderId, resolved, expectedCount) {
   await env.DB.prepare(`UPDATE orders SET ${sets.join(", ")} WHERE order_id = ?`).bind(...params).run();
 }
 
+
+function landingBriefCanStartProduction(productKey, brief) {
+  if (!brief || typeof brief !== "object") return false;
+  const hasCore = Boolean(brief.promotion_subject && brief.brand_summary && brief.key_message);
+  if (!hasCore) return false;
+  return new Set(["hooks", "what_to_say_guide"]).has(productKey);
+}
+
+async function applyLandingBriefAsIntake(env, orderId, jobs, shoppingIntent) {
+  if (!shoppingIntent || !landingBriefCanStartProduction(shoppingIntent.selected_product_key, shoppingIntent.brief)) {
+    return { applied: false };
+  }
+
+  const primary = (jobs || []).find((job) => job.job_role === "primary");
+  if (!primary) return { applied: false };
+
+  const submissionId = await stableId("intake", orderId + "|" + primary.job_id + "|storefront");
+  const payload = {
+    source: "storefront_pre_payment_brief",
+    audience: shoppingIntent.audience || null,
+    niches: shoppingIntent.niches || [],
+    needs: shoppingIntent.needs || [],
+    goal: shoppingIntent.goal || null,
+    product_key: shoppingIntent.selected_product_key,
+    brief: shoppingIntent.brief || {}
+  };
+
+  await env.DB.prepare(`
+    INSERT INTO intake_submissions (submission_id, token_hash, order_id, job_id, payload_json, created_at)
+    VALUES (?, 'storefront', ?, ?, ?, datetime('now'))
+    ON CONFLICT(submission_id) DO UPDATE SET
+      payload_json=excluded.payload_json
+  `).bind(submissionId, orderId, primary.job_id, JSON.stringify(payload)).run();
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET intake_status='complete', status='production_ready', updated_at=datetime('now')
+    WHERE job_id=?
+  `).bind(primary.job_id).run();
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='production_ready', updated_at=datetime('now')
+    WHERE parent_job_id=? AND intake_status='shared_parent'
+  `).bind(primary.job_id).run();
+
+  return { applied: true, submission_id: submissionId, job_id: primary.job_id };
+}
+
 export async function expandOrder(request, env, orderId) {
   const authError = auth(request, env);
   if (authError) return authError;
@@ -663,6 +1052,8 @@ export async function expandOrder(request, env, orderId) {
       sequence_index: Number(spec.sequence_index || 1),
       delivery_order: Number(spec.delivery_order || 1),
       manifest_version: resolved.manifest_version,
+      manifest: resolved.manifest,
+      output_requirements: resolved.manifest?.output_requirements || null,
       status: "awaiting_intake",
       intake_status: spec.intake_type === "shared_parent_intake" ? "shared_parent" : "pending"
     };
@@ -702,6 +1093,9 @@ export async function expandOrder(request, env, orderId) {
   const expectedCount = created.filter((x) => x.counts_toward_expected === 1).length;
   await updateOrderManifest(env, orderId, resolved, expectedCount);
 
+  const storefrontIntake = await applyLandingBriefAsIntake(env, orderId, created, shoppingIntent);
+  const productionDispatch = await dispatchReadyJobsToMake(env, orderId);
+
   if (safeId(body.stripe_event_id)) {
     await env.DB.prepare(`
       INSERT INTO stripe_ingress_events (event_id, event_type, checkout_session_id, product_key, order_id, status, created_at, processed_at)
@@ -728,6 +1122,8 @@ export async function expandOrder(request, env, orderId) {
     manifest_version: resolved.manifest_version,
     expected_deliverables: expectedCount,
     shopping_intent: shoppingIntent,
+    storefront_intake: storefrontIntake,
+    production_dispatch: productionDispatch,
     jobs: created
   });
 }
@@ -768,7 +1164,7 @@ export async function startIntakeFromCheckout(request, env, tallyBaseUrl) {
   }
 
   const job = await env.DB.prepare(`
-    SELECT job_id, product_key
+    SELECT job_id, product_key, status, intake_status
     FROM job_context
     WHERE order_id = ? AND job_role = 'primary'
     ORDER BY sequence_index ASC
@@ -778,6 +1174,20 @@ export async function startIntakeFromCheckout(request, env, tallyBaseUrl) {
   if (!job?.job_id) {
     return new Response("<h1>Your order exists, but the creative job is not ready yet.</h1>", {
       status: 409,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
+    });
+  }
+
+  if (job.status === "production_ready" && job.intake_status === "complete") {
+    return new Response(`<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your creative is underway</title></head>
+<body style="font-family:Arial,sans-serif;max-width:620px;margin:80px auto;padding:0 20px">
+<h1>You’re all set.</h1>
+<p>We have your payment and the brief needed to create your order. Make You Stop can now move it into production.</p>
+<p>You do not need to complete another form.</p>
+</body></html>`, {
+      status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
     });
   }
@@ -928,7 +1338,15 @@ export async function submitIntake(request, env, rawToken) {
     `).bind(row.order_id).run();
   }
 
-  return json({ success: true, submission_id: submissionId, order_id: row.order_id, job_id: row.job_id || null });
+  const productionDispatch = await dispatchReadyJobsToMake(env, row.order_id);
+
+  return json({
+    success: true,
+    submission_id: submissionId,
+    order_id: row.order_id,
+    job_id: row.job_id || null,
+    production_dispatch: productionDispatch
+  });
 }
 
 export async function jobContext(request, env, jobId) {
@@ -942,7 +1360,7 @@ export async function jobContext(request, env, jobId) {
 
   const order = await env.DB.prepare(`
     SELECT order_id, customer_id, brand_id, customer_email, product_selected, status,
-           expected_deliverables, completed_deliverables, delivery_email_sent_at
+           expected_deliverables, completed_deliverables, delivery_email_sent_at, expected_manifest_json
     FROM orders WHERE order_id = ?
   `).bind(job.order_id).first();
 
@@ -953,11 +1371,118 @@ export async function jobContext(request, env, jobId) {
     ORDER BY created_at DESC LIMIT 1
   `).bind(job.order_id, job.job_id).first();
 
+  let manifest = null;
+  try { manifest = order?.expected_manifest_json ? JSON.parse(order.expected_manifest_json) : null; } catch {}
+
   return json({
     success: true,
-    job,
+    job: { ...job, manifest, output_requirements: manifest?.output_requirements || null },
     order: order || null,
+    manifest,
     intake: intake ? { ...intake, payload: JSON.parse(intake.payload_json) } : null
+  });
+}
+
+
+export async function claimProductionJob(request, env, jobId) {
+  const authError = auth(request, env);
+  if (authError) return authError;
+  await ensureTables(env);
+  if (!safeId(jobId)) return json({ success: false, error: "Invalid job_id" }, 400);
+
+  const body = await readJson(request).catch(() => null);
+  const requestedClaimId = body?.claim_id == null || body.claim_id === ""
+    ? `production_${jobId}`
+    : String(body.claim_id);
+
+  if (!safeId(requestedClaimId)) {
+    return json({ success: false, error: "Invalid claim_id" }, 400);
+  }
+
+  const existing = await env.DB.prepare(`
+    SELECT job_id, order_id, deliverable_id, product_key, requested_lane, status,
+           intake_status, production_claim_id, production_claimed_at
+    FROM job_context
+    WHERE job_id = ?
+  `).bind(jobId).first();
+
+  if (!existing) return json({ success: false, error: "Job context not found" }, 404);
+
+  // A retry using the same deterministic claim is a safe replay, not a second production start.
+  if (existing.status === "production_claimed" && existing.production_claim_id === requestedClaimId) {
+    return json({
+      success: true,
+      claimed: true,
+      claimed_now: false,
+      idempotent_replay: true,
+      claim_id: requestedClaimId,
+      job: existing
+    });
+  }
+
+  if (existing.status !== "production_ready") {
+    return json({
+      success: false,
+      error: "Job is not available for production claim",
+      current_status: existing.status,
+      existing_claim_id: existing.production_claim_id || null
+    }, 409);
+  }
+
+  const result = await env.DB.prepare(`
+    UPDATE job_context
+    SET status = 'production_claimed',
+        production_claim_id = ?,
+        production_claimed_at = datetime('now'),
+        updated_at = datetime('now')
+    WHERE job_id = ?
+      AND status = 'production_ready'
+      AND (production_claim_id IS NULL OR production_claim_id = '')
+  `).bind(requestedClaimId, jobId).run();
+
+  if (Number(result.meta?.changes || 0) !== 1) {
+    const raced = await env.DB.prepare(`
+      SELECT job_id, order_id, deliverable_id, product_key, requested_lane, status,
+             intake_status, production_claim_id, production_claimed_at
+      FROM job_context
+      WHERE job_id = ?
+    `).bind(jobId).first();
+
+    if (raced?.status === "production_claimed" && raced.production_claim_id === requestedClaimId) {
+      return json({
+        success: true,
+        claimed: true,
+        claimed_now: false,
+        idempotent_replay: true,
+        claim_id: requestedClaimId,
+        job: raced
+      });
+    }
+
+    return json({
+      success: false,
+      error: "Production claim conflict",
+      current_status: raced?.status || null,
+      existing_claim_id: raced?.production_claim_id || null
+    }, 409);
+  }
+
+  const claimed = await env.DB.prepare(`
+    SELECT job_id, order_id, parent_job_id, deliverable_id, product_key, deliverable_type,
+           component_type, requested_lane, job_role, counts_toward_expected, request_type,
+           sequence_index, delivery_order, manifest_version, status, intake_status,
+           production_claim_id, production_claimed_at
+    FROM job_context
+    WHERE job_id = ?
+  `).bind(jobId).first();
+
+  return json({
+    success: true,
+    claimed: true,
+    claimed_now: true,
+    idempotent_replay: false,
+    claim_id: requestedClaimId,
+    job: claimed
   });
 }
 
@@ -973,7 +1498,7 @@ export async function productionContext(request, env, jobId) {
 
   const order = await env.DB.prepare(`
     SELECT order_id, customer_id, brand_id, customer_email, product_selected, status,
-           expected_deliverables, completed_deliverables, delivery_email_sent_at
+           expected_deliverables, completed_deliverables, delivery_email_sent_at, expected_manifest_json
     FROM orders WHERE order_id = ?
   `).bind(job.order_id).first();
 
@@ -1003,7 +1528,7 @@ export async function productionContext(request, env, jobId) {
   const intakePayload = intake ? JSON.parse(intake.payload_json) : null;
 
   const intent = await env.DB.prepare(`
-    SELECT intent_id, audience, niches_json, needs_json, goal, selected_product_key, source, created_at
+    SELECT intent_id, audience, niches_json, needs_json, goal, brief_json, selected_product_key, source, created_at
     FROM shopping_intents
     WHERE order_id = ?
     ORDER BY created_at DESC
@@ -1016,14 +1541,31 @@ export async function productionContext(request, env, jobId) {
     niches: JSON.parse(intent.niches_json || "[]"),
     needs: JSON.parse(intent.needs_json || "[]"),
     goal: intent.goal || null,
+    brief: JSON.parse(intent.brief_json || "{}"),
     selected_product_key: intent.selected_product_key,
     source: intent.source || null,
     created_at: intent.created_at
   } : null;
 
+  let manifest = null;
+  try { manifest = order?.expected_manifest_json ? JSON.parse(order.expected_manifest_json) : null; } catch {}
+
+  const executionContract = makeExecutionContract({
+    job,
+    order,
+    manifest,
+    shoppingIntent,
+    intake,
+    intakePayload,
+    assets
+  });
+
   return json({
     success: true,
     contract: "production_context_v1",
+    engine_contract: "make_execution_v1",
+    execution_contract: executionContract,
+    engine_context: executionContract,
     job: {
       job_id: job.job_id,
       order_id: job.order_id,
@@ -1039,9 +1581,12 @@ export async function productionContext(request, env, jobId) {
       sequence_index: Number(job.sequence_index || 1),
       delivery_order: Number(job.delivery_order || 1),
       manifest_version: Number(job.manifest_version || 1),
+      manifest,
+      output_requirements: manifest?.output_requirements || null,
       status: job.status,
       intake_status: job.intake_status
     },
+    manifest,
     customer_context: {
       customer_id: order?.customer_id || null,
       brand_id: order?.brand_id || null,
@@ -1070,6 +1615,171 @@ export async function productionContext(request, env, jobId) {
   });
 }
 
+
+async function rollbackProductionClaim(env, jobId, claimId) {
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='production_ready',
+        production_claim_id=NULL,
+        production_claimed_at=NULL,
+        updated_at=datetime('now')
+    WHERE job_id=?
+      AND status='production_claimed'
+      AND production_claim_id=?
+  `).bind(jobId, claimId).run();
+}
+
+async function dispatchProductionJobToMake(env, jobId) {
+  if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) {
+    return { job_id: jobId, dispatched: false, skipped: true, reason: "make_ingress_not_configured" };
+  }
+
+  const claimId = `production_${jobId}`;
+  const internalHeaders = {
+    "Authorization": `Bearer ${env.UPLOAD_SECRET}`,
+    "Content-Type": "application/json"
+  };
+
+  const claimRequest = new Request(`https://internal.invalid/api/jobs/${jobId}/claim`, {
+    method: "POST",
+    headers: internalHeaders,
+    body: JSON.stringify({ claim_id: claimId })
+  });
+  const claimResponse = await claimProductionJob(claimRequest, env, jobId);
+  const claimPayload = await claimResponse.json().catch(() => ({}));
+
+  if (!claimResponse.ok || claimPayload?.claimed_now !== true) {
+    return {
+      job_id: jobId,
+      dispatched: false,
+      skipped: true,
+      reason: claimPayload?.idempotent_replay ? "already_claimed" : "claim_not_acquired",
+      claim_status: claimResponse.status
+    };
+  }
+
+  try {
+    const contextRequest = new Request(`https://internal.invalid/api/jobs/${jobId}/production-context`, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${env.UPLOAD_SECRET}` }
+    });
+    const contextResponse = await productionContext(contextRequest, env, jobId);
+    const productionPayload = await contextResponse.json().catch(() => null);
+
+    if (!contextResponse.ok || !productionPayload || productionPayload.contract !== "production_context_v1") {
+      await rollbackProductionClaim(env, jobId, claimId);
+      return {
+        job_id: jobId,
+        dispatched: false,
+        reason: "production_context_failed",
+        context_status: contextResponse.status
+      };
+    }
+
+    const makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
+      },
+      body: JSON.stringify(productionPayload)
+    });
+
+    if (!makeResponse.ok) {
+      await rollbackProductionClaim(env, jobId, claimId);
+      return {
+        job_id: jobId,
+        dispatched: false,
+        reason: "make_ingress_rejected",
+        make_status: makeResponse.status
+      };
+    }
+
+    return {
+      job_id: jobId,
+      dispatched: true,
+      claim_id: claimId,
+      make_status: makeResponse.status
+    };
+  } catch (error) {
+    await rollbackProductionClaim(env, jobId, claimId);
+    return {
+      job_id: jobId,
+      dispatched: false,
+      reason: "make_ingress_error",
+      error: error?.message || "Unknown Make ingress error"
+    };
+  }
+}
+
+export async function redispatchProductionJob(request, env, jobId) {
+  const authError = auth(request, env);
+  if (authError) return authError;
+  await ensureTables(env);
+  if (!safeId(jobId)) return json({ success: false, error: "Invalid job_id" }, 400);
+
+  const body = await readJson(request).catch(() => ({}));
+  const expectedClaimId = typeof body?.expected_claim_id === "string" && body.expected_claim_id
+    ? body.expected_claim_id
+    : `production_${jobId}`;
+
+  const current = await env.DB.prepare(`
+    SELECT job_id, order_id, status, production_claim_id
+    FROM job_context
+    WHERE job_id = ?
+  `).bind(jobId).first();
+
+  if (!current) return json({ success: false, error: "Job context not found" }, 404);
+
+  if (current.status !== "production_claimed" || current.production_claim_id !== expectedClaimId) {
+    return json({
+      success: false,
+      error: "Job is not in the expected claimed state",
+      current_status: current.status || null,
+      current_claim_id: current.production_claim_id || null,
+      expected_claim_id: expectedClaimId
+    }, 409);
+  }
+
+  await env.DB.prepare(`
+    UPDATE job_context
+    SET status='production_ready',
+        production_claim_id=NULL,
+        production_claimed_at=NULL,
+        updated_at=datetime('now')
+    WHERE job_id=?
+      AND status='production_claimed'
+      AND production_claim_id=?
+  `).bind(jobId, expectedClaimId).run();
+
+  const result = await dispatchProductionJobToMake(env, jobId);
+  return json({
+    success: Boolean(result?.dispatched),
+    redispatch: true,
+    job_id: jobId,
+    previous_claim_id: expectedClaimId,
+    dispatch: result
+  }, result?.dispatched ? 200 : 409);
+}
+
+
+async function dispatchReadyJobsToMake(env, orderId) {
+  if (!env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) return [];
+
+  const result = await env.DB.prepare(`
+    SELECT job_id
+    FROM job_context
+    WHERE order_id=? AND status='production_ready'
+    ORDER BY sequence_index ASC
+  `).bind(orderId).all();
+
+  const dispatches = [];
+  for (const row of result.results || []) {
+    dispatches.push(await dispatchProductionJobToMake(env, row.job_id));
+  }
+  return dispatches;
+}
+
 export async function readyJobs(request, env) {
   const authError = auth(request, env);
   if (authError) return authError;
@@ -1083,33 +1793,42 @@ export async function readyJobs(request, env) {
   const requestedLane = url.searchParams.get("requested_lane");
 
   let sql = `
-    SELECT * FROM job_context
-    WHERE status='production_ready' AND job_role=?
+    SELECT jc.*, o.expected_manifest_json
+    FROM job_context jc
+    LEFT JOIN orders o ON o.order_id = jc.order_id
+    WHERE jc.status='production_ready' AND jc.job_role=?
   `;
   const params = [role];
 
   if (role === "support" && componentType) {
     if (!safeId(componentType)) return json({ success: false, error: "Invalid component_type" }, 400);
-    sql += " AND component_type=?";
+    sql += " AND jc.component_type=?";
     params.push(componentType);
   }
 
   if (productKey) {
     if (!safeId(productKey)) return json({ success: false, error: "Invalid product_key" }, 400);
-    sql += " AND product_key=?";
+    sql += " AND jc.product_key=?";
     params.push(productKey);
   }
 
   if (requestedLane) {
     if (!safeId(requestedLane)) return json({ success: false, error: "Invalid requested_lane" }, 400);
-    sql += " AND requested_lane=?";
+    sql += " AND jc.requested_lane=?";
     params.push(requestedLane);
   }
 
-  sql += " ORDER BY order_id ASC, sequence_index ASC LIMIT ?";
+  sql += " ORDER BY jc.order_id ASC, jc.sequence_index ASC LIMIT ?";
   params.push(limit);
 
   const result = await env.DB.prepare(sql).bind(...params).all();
+
+  const jobs = (result.results || []).map((row) => {
+    let manifest = null;
+    try { manifest = row.expected_manifest_json ? JSON.parse(row.expected_manifest_json) : null; } catch {}
+    const { expected_manifest_json, ...job } = row;
+    return { ...job, manifest, output_requirements: manifest?.output_requirements || null };
+  });
 
   return json({
     success: true,
@@ -1117,7 +1836,7 @@ export async function readyJobs(request, env) {
     component_type: role === "support" ? componentType || null : null,
     product_key: productKey || null,
     requested_lane: requestedLane || null,
-    jobs: result.results || []
+    jobs
   });
 }
 
