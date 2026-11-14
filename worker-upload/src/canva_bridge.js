@@ -218,6 +218,49 @@ export async function canvaTemplateDataset(request, env, templateId) {
   return json({success:true,result});
 }
 
+function normaliseAutofillData(rawData, dataset) {
+  const source = rawData && typeof rawData === "object" && !Array.isArray(rawData) ? rawData : {};
+  const fields = dataset && typeof dataset === "object" && !Array.isArray(dataset) ? dataset : {};
+  const data = {};
+  const skipped = [];
+
+  for (const [name, spec] of Object.entries(fields)) {
+    if (!Object.prototype.hasOwnProperty.call(source, name)) continue;
+    const value = source[name];
+    if (value === null || value === undefined || value === "") continue;
+
+    if (spec?.type === "text") {
+      if (value && typeof value === "object" && value.type === "text" && typeof value.text === "string") {
+        data[name] = {type:"text", text:value.text};
+      } else {
+        const textValue = Array.isArray(value) ? value.join(", ") : String(value);
+        data[name] = {type:"text", text:textValue};
+      }
+      continue;
+    }
+
+    if (spec?.type === "image") {
+      if (value && typeof value === "object" && (value.type === "image" || value.type === "video") && value.asset_id) {
+        data[name] = {type:value.type, asset_id:String(value.asset_id)};
+      } else if (value && typeof value === "object" && value.asset_id) {
+        data[name] = {type:"image", asset_id:String(value.asset_id)};
+      } else {
+        skipped.push({field:name, reason:"image field requires Canva asset_id"});
+      }
+      continue;
+    }
+
+    if ((spec?.type === "chart" || spec?.type === "sheet") && value && typeof value === "object" && value.type === spec.type) {
+      data[name] = value;
+      continue;
+    }
+
+    skipped.push({field:name, reason:`unsupported or invalid value for ${spec?.type || "unknown"} field`});
+  }
+
+  return {data, skipped};
+}
+
 export async function canvaAutofill(request, env) {
   const e = needAuth(request,env); if (e) return e;
   let body; try { body=await request.json(); } catch { body=null; }
@@ -229,14 +272,34 @@ export async function canvaAutofill(request, env) {
     return json({success:false,error:"Provide exactly one of brand_template_id or design_id"},400);
   }
 
-  const payload = {data:body.data};
+  const sourceId = String(hasDesign ? body.design_id : body.brand_template_id);
+  const datasetPath = hasDesign
+    ? `/designs/${encodeURIComponent(sourceId)}/dataset`
+    : `/brand-templates/${encodeURIComponent(sourceId)}/dataset`;
+
+  const datasetResult = await canvaFetch(env,datasetPath,{method:"GET"});
+  const dataset = datasetResult?.dataset || {};
+  const normalised = normaliseAutofillData(body.data,dataset);
+
+  if (!Object.keys(normalised.data).length) {
+    return json({
+      success:false,
+      error:"No valid Canva autofill fields matched the source dataset",
+      source_type:hasDesign ? "design" : "brand_template",
+      source_id:sourceId,
+      available_fields:Object.keys(dataset),
+      skipped_fields:normalised.skipped
+    },422);
+  }
+
+  const payload = {data:normalised.data};
 
   if (hasDesign) {
     payload.type = body.update_in_place ? "update_design" : "create_from_design";
-    payload.design_id = String(body.design_id);
+    payload.design_id = sourceId;
   } else {
     payload.type = "create_from_brand_template";
-    payload.brand_template_id = String(body.brand_template_id);
+    payload.brand_template_id = sourceId;
   }
 
   if (body.title && !body.update_in_place) payload.title=String(body.title).slice(0,200);
@@ -245,7 +308,10 @@ export async function canvaAutofill(request, env) {
   return json({
     success:true,
     source_type:hasDesign ? "design" : "brand_template",
+    source_id:sourceId,
     autofill_mode:payload.type,
+    matched_fields:Object.keys(normalised.data),
+    skipped_fields:normalised.skipped,
     result
   });
 }
