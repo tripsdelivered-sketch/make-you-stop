@@ -273,7 +273,23 @@ export async function canvaAutofill(request, env) {
   try {
     const e = needAuth(request,env); if (e) return e;
     let body; try { body=await request.json(); } catch { body=null; }
-    if (!body || !body.data) return json({success:false,error:"data is required",stage:"validate_request"},400);
+
+    // Make can serialize a single mapped collection as a one-item array.
+    // Accept that transport shape defensively without changing the Canva contract.
+    if (Array.isArray(body)) {
+      if (body.length !== 1 || !body[0] || typeof body[0] !== "object" || Array.isArray(body[0])) {
+        return json({
+          success:false,
+          error:"Expected a single Canva autofill object",
+          stage:"validate_request",
+          received_shape:"array",
+          received_items:body.length
+        },400);
+      }
+      body = body[0];
+    }
+
+    if (!body || typeof body !== "object" || !body.data) return json({success:false,error:"data is required",stage:"validate_request"},400);
 
     const hasBrandTemplate = Boolean(body.brand_template_id);
     const hasDesign = Boolean(body.design_id);
