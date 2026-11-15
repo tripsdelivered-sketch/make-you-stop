@@ -1008,6 +1008,24 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
         return canvaStatus(request, env);
       }
 
+      if (request.method === "GET" && path === "/api/canva/auth/start") {
+        if (!env.UPLOAD_SECRET) {
+          return json({ success: false, error: "Upload secret is not configured" }, 500);
+        }
+        const headers = new Headers(request.headers);
+        headers.set("Authorization", `Bearer ${env.UPLOAD_SECRET}`);
+        headers.set("Content-Type", "application/json");
+        const internalRequest = new Request(request.url, {
+          method: "POST",
+          headers,
+          body: "{}"
+        });
+        const authResponse = await canvaAuthStart(internalRequest, env);
+        const authData = await authResponse.clone().json().catch(() => null);
+        if (!authResponse.ok || !authData?.authorize_url) return authResponse;
+        return Response.redirect(authData.authorize_url, 302);
+      }
+
       if (request.method === "POST" && path === "/api/canva/auth/start") {
         return canvaAuthStart(request, env);
       }
