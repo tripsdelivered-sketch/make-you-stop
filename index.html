@@ -572,78 +572,98 @@ function applyReturnOrderContext(){
 function applyControlledTestContext(){
   const params=new URLSearchParams(window.location.search);
   const key=params.get('controlled_test');
+  const requestedAudience=params.get('controlled_audience');
+  const testAudience=requestedAudience==='small-business'?'small-business':'creator';
+
   const configs={
     hooks:{
-      notes:'Create 10 personalised hooks for this Beauty / Skincare creator. Keep them conversational, specific to real beauty frustrations or routines, and curiosity-led without sounding like clickbait. Include varied creative angles, top hooks, CTA starters and practical usage direction.'
+      extra:'Create 10 personalised hooks with different creative angles, emotion + curiosity + tension, top 3 highlighted, CTA starters and usage direction. Keep them specific to real Beauty / Skincare frustrations or routines and avoid generic clickbait.'
     },
     image_words:{
-      notes:'Create one finished static Image / Words social creative with a clear story or message. Keep it relatable, visually clear and social-first. Include strong on-image wording, caption direction, CTA direction and useful topic suggestions. Avoid clickbait or overly polished advertising language.'
+      extra:'Create one finished static Image / Words creative built around one clear story or message. The on-image wording must be part of the concept, with caption direction, CTA direction and useful topic suggestions.'
     },
     what_to_say_guide:{
-      notes:'Create a practical What to Say Guide for this Beauty / Skincare creator. Include a strong opening, clear speaking/content direction, useful talking points, pacing guidance and a natural CTA. Keep it conversational and easy to use on camera.',
+      extra:'Create clear speaking/content direction for someone who knows the idea but not what to say. Include a hook starter, pacing guidance, CTA direction and the bonus opening-hook/pacing support.',
       filming:'Speaking to camera'
     },
     storyboard:{
-      notes:'Create one Storyboard Direction for this Beauty / Skincare creator. Map a clear hook, emotional angle, story progression, visual direction, payoff and CTA. Keep the filming plan realistic for a creator using a phone.',
+      extra:'Create one custom social storyboard direction with a clear hook, emotional angle, story progression, visual direction and CTA. Include the first-shot tip and simple filming note.',
       filming:'Yes'
     },
     storyboard_showcase:{
-      notes:'Create the purchased Storyboard + Visual Showcase for this Beauty / Skincare creator. Include the storyboard direction, strongest story beats, 3–5 visual concept frames, camera/framing guidance, payoff and CTA direction.',
+      extra:'Create the storyboard direction plus 3–5 visual concept frames showing the strongest beats before filming. Include camera/framing guidance, payoff + CTA, and filming/caption/sound direction.',
       filming:'Yes'
     },
     guide_ebook:{
-      notes:'Create a compact polished Beauty / Skincare mini eBook around one clear practical topic. Make it useful, easy to follow and ready to send. Include a clear structure, key takeaways, action steps and a natural next step.',
-      guide_outcome:'Help everyday women simplify their makeup and skincare routine with realistic, affordable steps they can actually use.',
+      extra:'Create an approximately 5–8 page compact polished guide around one clear Beauty / Skincare topic or purpose, with cover, structured content, polished layout and ready-to-send PDF direction. Include a promotion idea plus hook/CTA direction.',
+      guide_outcome:'Help the reader simplify everyday makeup and skincare with realistic, affordable steps they can actually use.',
       must_include:'Practical routine ideas, affordable beauty thinking, common mistakes to avoid and simple next steps.',
       template_key:'beginner_guide'
     },
     unboxing_product_reveal:{
-      notes:'Create an Unboxing / Product Reveal concept for this Beauty / Skincare creator. Build anticipation, reveal sequence, product close-up direction, payoff and CTA around a realistic social-first beauty moment.'
+      extra:'Create a product-reveal creative built around anticipation, sequence and payoff. Include a reveal hook, product story progression, visual sequence, payoff + CTA, plus opening-hook/first-3–5-seconds and caption/music direction.'
     },
     video_reel:{
-      notes:'Create one finished short-form Video / Reel for this Beauty / Skincare creator. Use a strong opening, clear social-first story progression, text-led visual treatment and payoff. No customer voiceover or music is required in the delivered video.'
+      extra:'Create one finished vertical short-form Video / Reel with social-first story progression and a text-led visual treatment. Include hook + caption/CTA direction. No customer voiceover or audio is included in the delivered product.'
     }
   };
   const cfg=configs[key];
   if(!cfg)return;
 
   const product=catalog.find(p=>p.key===key);
-  if(!product)return;
+  if(!product||!product.audiences.includes(testAudience))return;
 
-  audience='creator';
-  selectedNiches=['Beauty / Skincare'];
+  const niche='Beauty / Skincare';
+  const isBusiness=testAudience==='small-business';
+  const audienceLabel=isBusiness?'Business':'Creator';
+  const promotion=isBusiness
+    ? 'A Beauty / Skincare business offering realistic, approachable products and routines for everyday customers.'
+    : 'Realistic, affordable beauty content for everyday women who want simple makeup and skincare ideas that are practical and easy to follow.';
+  const brand=isBusiness
+    ? 'We are a Beauty / Skincare business focused on practical, approachable beauty for everyday customers. We want our social content to feel useful and human rather than like polished advertising, with realistic routines, product education and simple beauty ideas.'
+    : 'I create relatable Beauty / Skincare content for women who enjoy makeup and skincare but do not want complicated routines or to buy every viral product. I share realistic routines, affordable beauty finds, honest product opinions and simple everyday tips.';
+  const message=isBusiness
+    ? 'Beauty does not have to feel complicated or inaccessible. We want customers to see practical products, realistic routines and small changes that can make everyday makeup and skincare easier.'
+    : 'Beauty does not have to be complicated or expensive. Small changes to your routine can make everyday makeup and skincare feel easier, more achievable and more enjoyable.';
+  const ctaText=isBusiness
+    ? 'Explore our practical Beauty / Skincare products and follow for realistic everyday beauty ideas.'
+    : 'Follow my page for realistic beauty routines, honest product finds and simple everyday beauty ideas.';
+  const contract='Purchased landing-page product: '+product.name+'. '+product.desc+' You receive: '+product.includes.join('; ')+'. Make You Stop Bonus: '+product.bonus;
+
+  audience=testAudience;
+  selectedNiches=[niche];
   primaryKeys=new Set([key]);
   recommendedKeys=new Set();
 
   cart=[{
-    id:'controlled_'+key+'_preview',
+    id:'controlled_'+testAudience+'_'+key+'_preview',
     key,
     name:product.name,
     price:product.price,
-    audience:'creator',
+    audience:testAudience,
     qty:1,
-    unitNiches:['Beauty / Skincare'],
+    unitNiches:[niche],
     brief:null,
     intentId:null
   }];
 
-  $('#shopAudienceLabel').textContent='Creator shop';
-  $('#shopNicheLabel').textContent='Beauty / Skincare';
+  $('#shopAudienceLabel').textContent=audienceLabel+' shop';
+  $('#shopNicheLabel').textContent=niche;
   show($('#helpFlow'));
   show($('#shopResults'));
   renderProducts();
   renderCart();
   openSmartBrief();
 
-  $('#briefPromotion').value='Realistic, affordable beauty content for everyday women who want simple makeup and skincare ideas that are practical and easy to follow.';
-  $('#briefBrand').value='I create relatable Beauty / Skincare content for women who enjoy makeup and skincare but do not want complicated routines or to buy every viral product. I share realistic routines, affordable beauty finds, honest product opinions and simple everyday tips.';
-  $('#briefMessage').value='Beauty does not have to be complicated or expensive. Small changes to your routine can make everyday makeup and skincare feel easier, more achievable and more enjoyable.';
+  $('#briefPromotion').value=promotion;
+  $('#briefBrand').value=brand;
+  $('#briefMessage').value=message;
 
   const tiktok=document.querySelector('input[name="briefPlatform"][value="TikTok"]');
   if(tiktok)tiktok.checked=true;
 
   const cta=$('#briefCta');
-  if(cta)cta.value='Follow my page for realistic beauty routines, honest product finds and simple everyday beauty ideas.';
+  if(cta)cta.value=ctaText;
 
   const url=$('#briefUrl');
   if(url)url.value='https://makeyoustop.com';
@@ -663,8 +683,8 @@ function applyControlledTestContext(){
   const template=$('#briefTemplate');
   if(template&&cfg.template_key)template.value=cfg.template_key;
 
-  $('#briefNotes').value=cfg.notes;
-  $('#briefStatus').textContent='Controlled '+product.name+' test prefill — review, then continue to Stripe Sandbox.';
+  $('#briefNotes').value=contract+' '+cfg.extra;
+  $('#briefStatus').textContent='Controlled '+audienceLabel+' '+product.name+' test prefill — review, then continue to Stripe Sandbox.';
 }
 
 renderCart();
