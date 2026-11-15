@@ -447,8 +447,22 @@ export async function canvaExport(request, env) {
   if (!allowed.has(body.format)) return json({success:false,error:"Unsupported export format"},400);
   const payload = {design_id:body.design_id,format:{type:body.format}};
   if (Array.isArray(body.pages) && body.pages.length) payload.format.pages=body.pages;
-  const result = await canvaFetch(env,"/exports",{method:"POST",body:JSON.stringify(payload)});
-  return json({success:true,result});
+  try {
+    const result = await canvaFetch(env,"/exports",{method:"POST",body:JSON.stringify(payload)});
+    return json({success:true,design_id:body.design_id,format:body.format,result});
+  } catch (error) {
+    const isPreview = new URL(request.url).hostname.startsWith("selling-flow-v1-");
+    return json({
+      success:false,
+      diagnostic_only:isPreview,
+      error:"Canva export request failed",
+      stage:"export_request",
+      design_id:body.design_id,
+      format:body.format,
+      payload,
+      detail:error instanceof Error ? error.message : String(error)
+    }, isPreview ? 200 : 502);
+  }
 }
 
 export async function canvaExportStore(request, env, exportId) {
