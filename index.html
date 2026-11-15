@@ -571,19 +571,53 @@ function applyReturnOrderContext(){
 
 function applyControlledTestContext(){
   const params=new URLSearchParams(window.location.search);
-  if(params.get('controlled_test')!=='image_words')return;
+  const key=params.get('controlled_test');
+  const configs={
+    hooks:{
+      notes:'Create 10 personalised hooks for this Beauty / Skincare creator. Keep them conversational, specific to real beauty frustrations or routines, and curiosity-led without sounding like clickbait. Include varied creative angles, top hooks, CTA starters and practical usage direction.'
+    },
+    image_words:{
+      notes:'Create one finished static Image / Words social creative with a clear story or message. Keep it relatable, visually clear and social-first. Include strong on-image wording, caption direction, CTA direction and useful topic suggestions. Avoid clickbait or overly polished advertising language.'
+    },
+    what_to_say_guide:{
+      notes:'Create a practical What to Say Guide for this Beauty / Skincare creator. Include a strong opening, clear speaking/content direction, useful talking points, pacing guidance and a natural CTA. Keep it conversational and easy to use on camera.',
+      filming:'Speaking to camera'
+    },
+    storyboard:{
+      notes:'Create one Storyboard Direction for this Beauty / Skincare creator. Map a clear hook, emotional angle, story progression, visual direction, payoff and CTA. Keep the filming plan realistic for a creator using a phone.',
+      filming:'Yes'
+    },
+    storyboard_showcase:{
+      notes:'Create the purchased Storyboard + Visual Showcase for this Beauty / Skincare creator. Include the storyboard direction, strongest story beats, 3–5 visual concept frames, camera/framing guidance, payoff and CTA direction.',
+      filming:'Yes'
+    },
+    guide_ebook:{
+      notes:'Create a compact polished Beauty / Skincare mini eBook around one clear practical topic. Make it useful, easy to follow and ready to send. Include a clear structure, key takeaways, action steps and a natural next step.',
+      guide_outcome:'Help everyday women simplify their makeup and skincare routine with realistic, affordable steps they can actually use.',
+      must_include:'Practical routine ideas, affordable beauty thinking, common mistakes to avoid and simple next steps.',
+      template_key:'beginner_guide'
+    },
+    unboxing_product_reveal:{
+      notes:'Create an Unboxing / Product Reveal concept for this Beauty / Skincare creator. Build anticipation, reveal sequence, product close-up direction, payoff and CTA around a realistic social-first beauty moment.'
+    },
+    video_reel:{
+      notes:'Create one finished short-form Video / Reel for this Beauty / Skincare creator. Use a strong opening, clear social-first story progression, text-led visual treatment and payoff. No customer voiceover or music is required in the delivered video.'
+    }
+  };
+  const cfg=configs[key];
+  if(!cfg)return;
 
-  const product=catalog.find(p=>p.key==='image_words');
+  const product=catalog.find(p=>p.key===key);
   if(!product)return;
 
   audience='creator';
   selectedNiches=['Beauty / Skincare'];
-  primaryKeys=new Set(['image_words']);
+  primaryKeys=new Set([key]);
   recommendedKeys=new Set();
 
   cart=[{
-    id:'controlled_image_words_preview',
-    key:'image_words',
+    id:'controlled_'+key+'_preview',
+    key,
     name:product.name,
     price:product.price,
     audience:'creator',
@@ -617,8 +651,20 @@ function applyControlledTestContext(){
   const assets=$('#briefAssets');
   if(assets)assets.value='mys_decide';
 
-  $('#briefNotes').value='Create one finished static Image / Words social creative with a clear story or message. Keep it relatable, visually clear and social-first. Include strong on-image wording, caption direction, CTA direction and useful topic suggestions. Avoid clickbait or overly polished advertising language.';
-  $('#briefStatus').textContent='Controlled Image / Words test prefill — review, then continue to Stripe Sandbox.';
+  const filming=$('#briefFilming');
+  if(filming&&cfg.filming)filming.value=cfg.filming;
+
+  const guideOutcome=$('#briefGuideOutcome');
+  if(guideOutcome&&cfg.guide_outcome)guideOutcome.value=cfg.guide_outcome;
+
+  const mustInclude=$('#briefMustInclude');
+  if(mustInclude&&cfg.must_include)mustInclude.value=cfg.must_include;
+
+  const template=$('#briefTemplate');
+  if(template&&cfg.template_key)template.value=cfg.template_key;
+
+  $('#briefNotes').value=cfg.notes;
+  $('#briefStatus').textContent='Controlled '+product.name+' test prefill — review, then continue to Stripe Sandbox.';
 }
 
 renderCart();
