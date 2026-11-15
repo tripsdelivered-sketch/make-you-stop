@@ -102,7 +102,9 @@ function redirectUri(request) {
 }
 
 async function tokenRequest(env, params) {
-  const credentials = btoa(`${env.CANVA_CLIENT_ID}:${env.CANVA_CLIENT_SECRET}`);
+  const clientId = String(env.CANVA_CLIENT_ID || "").trim();
+  const clientSecret = String(env.CANVA_CLIENT_SECRET || "").trim();
+  const credentials = btoa(`${clientId}:${clientSecret}`);
   const response = await fetch(`${API}/oauth/token`, {
     method:"POST",
     headers:{"Authorization":`Basic ${credentials}`,"Content-Type":"application/x-www-form-urlencoded"},
