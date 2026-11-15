@@ -972,7 +972,7 @@ button:disabled{opacity:.6;cursor:not-allowed}.note{font-size:14px;color:#555;ma
 <div class="row"><label><input type="checkbox" name="platform_ui" value="TikTok" checked> TikTok</label><label><input type="checkbox" name="platform_ui" value="Instagram / Reels"> Instagram / Reels</label></div>
 <label>What should people do next?<input name="cta" form="imageWordsCheckoutForm" value="Follow my page for realistic beauty routines, honest product finds and simple everyday beauty ideas."></label>
 <label>Approved link or destination<input name="destination_url" form="imageWordsCheckoutForm" value="https://makeyoustop.com"></label>
-<label>Anything else you'd like us to know?<textarea name="extra_notes" form="imageWordsCheckoutForm" rows="4">Create one finished static Image / Words creative built around one clear story or message. The on-image wording must be part of the concept, with caption direction, CTA direction and useful topic suggestions.</textarea></label>
+<label>Anything else you'd like us to know?<textarea name="extra_notes" form="imageWordsCheckoutForm" rows="4">Keep it relatable and useful for everyday beauty audiences. I am happy for Make You Stop to decide the strongest creative angle and visual treatment.</textarea></label>
 <form method="POST" action="/image-words-checkout" id="imageWordsCheckoutForm">
 <input type="hidden" name="platforms" id="f_platforms">
 <input type="hidden" name="asset_status" value="mys_decide">
