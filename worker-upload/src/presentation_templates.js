@@ -220,6 +220,8 @@ function buildHookPresentation(body,cfg,context){
 function buildGenericPresentation(productKey,body,cfg,context){
   const hero={...visualBrief(productKey,context.niche,context.promoted_subject,context.platforms),asset_id:str(body.hero_media?.asset_id,100)||null,asset_url:str(body.hero_media?.asset_url,1200)||null,alt_text:str(body.hero_media?.alt_text,250)||`${cfg.display_name} preview`};
   const approvedOutput=body.approved_output??body.output??body.deliverable??null;
+  const approvedFields=approvedOutput&&typeof approvedOutput==="object"&&!Array.isArray(approvedOutput)?approvedOutput:{};
+  const platformLine=context.platforms.length?context.platforms.join(" + "):str(body.platform_line,300);
   return {
     pages:[
       {page_key:"cover",eyebrow:"PERSONALISED CREATIVE",title:`Your ${cfg.display_name}`,...context,hero_media:hero,customer_promise:cfg.customer_promise},
@@ -228,7 +230,15 @@ function buildGenericPresentation(productKey,body,cfg,context){
       {page_key:"approved_output",eyebrow:"YOUR FINISHED CREATIVE",title:cfg.display_name,approved_output:approvedOutput,hero_media:hero}
     ],
     hero_media:hero,
-    canva_data:{...context,hero_media_asset_id:hero.asset_id,hero_media_url:hero.asset_url,approved_output:approvedOutput}
+    canva_data:{
+      ...body,
+      ...approvedFields,
+      ...context,
+      platform_line:platformLine,
+      hero_media_asset_id:hero.asset_id,
+      hero_media_url:hero.asset_url,
+      approved_output:approvedOutput
+    }
   };
 }
 export async function buildPresentation(request, env, forcedProductKey=null) {
