@@ -270,58 +270,97 @@ function normaliseAutofillData(rawData, dataset) {
 }
 
 export async function canvaAutofill(request, env) {
-  const e = needAuth(request,env); if (e) return e;
-  let body; try { body=await request.json(); } catch { body=null; }
-  if (!body || !body.data) return json({success:false,error:"data is required"},400);
+  try {
+    const e = needAuth(request,env); if (e) return e;
+    let body; try { body=await request.json(); } catch { body=null; }
+    if (!body || !body.data) return json({success:false,error:"data is required",stage:"validate_request"},400);
 
-  const hasBrandTemplate = Boolean(body.brand_template_id);
-  const hasDesign = Boolean(body.design_id);
-  if (hasBrandTemplate === hasDesign) {
-    return json({success:false,error:"Provide exactly one of brand_template_id or design_id"},400);
-  }
+    const hasBrandTemplate = Boolean(body.brand_template_id);
+    const hasDesign = Boolean(body.design_id);
+    if (hasBrandTemplate === hasDesign) {
+      return json({success:false,error:"Provide exactly one of brand_template_id or design_id",stage:"validate_source"},400);
+    }
 
-  const sourceId = String(hasDesign ? body.design_id : body.brand_template_id);
-  const datasetPath = hasDesign
-    ? `/designs/${encodeURIComponent(sourceId)}/dataset`
-    : `/brand-templates/${encodeURIComponent(sourceId)}/dataset`;
+    const sourceId = String(hasDesign ? body.design_id : body.brand_template_id);
+    const datasetPath = hasDesign
+      ? `/designs/${encodeURIComponent(sourceId)}/dataset`
+      : `/brand-templates/${encodeURIComponent(sourceId)}/dataset`;
 
-  const datasetResult = await canvaFetch(env,datasetPath,{method:"GET"});
-  const dataset = datasetResult?.dataset || {};
-  const normalised = normaliseAutofillData(body.data,dataset);
+    let datasetResult;
+    try {
+      datasetResult = await canvaFetch(env,datasetPath,{method:"GET"});
+    } catch (error) {
+      return json({
+        success:false,
+        error:"Canva dataset lookup failed",
+        stage:"dataset_lookup",
+        source_type:hasDesign ? "design" : "brand_template",
+        source_id:sourceId,
+        detail:error instanceof Error ? error.message : String(error)
+      },502);
+    }
 
-  if (!Object.keys(normalised.data).length) {
+    const dataset = datasetResult?.dataset || {};
+    const normalised = normaliseAutofillData(body.data,dataset);
+
+    if (!Object.keys(normalised.data).length) {
+      return json({
+        success:false,
+        error:"No valid Canva autofill fields matched the source dataset",
+        stage:"normalise_fields",
+        source_type:hasDesign ? "design" : "brand_template",
+        source_id:sourceId,
+        available_fields:Object.keys(dataset),
+        skipped_fields:normalised.skipped
+      },422);
+    }
+
+    const payload = {data:normalised.data};
+
+    if (hasDesign) {
+      payload.type = body.update_in_place ? "update_design" : "create_from_design";
+      payload.design_id = sourceId;
+    } else {
+      payload.type = "create_from_brand_template";
+      payload.brand_template_id = sourceId;
+    }
+
+    if (body.title && !body.update_in_place) payload.title=String(body.title).slice(0,200);
+
+    let result;
+    try {
+      result = await canvaFetch(env,"/autofills",{method:"POST",body:JSON.stringify(payload)});
+    } catch (error) {
+      return json({
+        success:false,
+        error:"Canva autofill request failed",
+        stage:"autofill_request",
+        source_type:hasDesign ? "design" : "brand_template",
+        source_id:sourceId,
+        autofill_mode:payload.type,
+        matched_fields:Object.keys(normalised.data),
+        skipped_fields:normalised.skipped,
+        detail:error instanceof Error ? error.message : String(error)
+      },502);
+    }
+
     return json({
-      success:false,
-      error:"No valid Canva autofill fields matched the source dataset",
+      success:true,
       source_type:hasDesign ? "design" : "brand_template",
       source_id:sourceId,
-      available_fields:Object.keys(dataset),
-      skipped_fields:normalised.skipped
-    },422);
+      autofill_mode:payload.type,
+      matched_fields:Object.keys(normalised.data),
+      skipped_fields:normalised.skipped,
+      result
+    });
+  } catch (error) {
+    return json({
+      success:false,
+      error:"Canva autofill bridge failed",
+      stage:"bridge_exception",
+      detail:error instanceof Error ? error.message : String(error)
+    },500);
   }
-
-  const payload = {data:normalised.data};
-
-  if (hasDesign) {
-    payload.type = body.update_in_place ? "update_design" : "create_from_design";
-    payload.design_id = sourceId;
-  } else {
-    payload.type = "create_from_brand_template";
-    payload.brand_template_id = sourceId;
-  }
-
-  if (body.title && !body.update_in_place) payload.title=String(body.title).slice(0,200);
-
-  const result = await canvaFetch(env,"/autofills",{method:"POST",body:JSON.stringify(payload)});
-  return json({
-    success:true,
-    source_type:hasDesign ? "design" : "brand_template",
-    source_id:sourceId,
-    autofill_mode:payload.type,
-    matched_fields:Object.keys(normalised.data),
-    skipped_fields:normalised.skipped,
-    result
-  });
 }
 
 export async function canvaExport(request, env) {
