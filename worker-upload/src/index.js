@@ -991,6 +991,55 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
         return redispatchProductionJob(request, env, productionRedispatchMatch[1]);
       }
 
+      // Preview-only controlled replay for the existing paid Hooks canary.
+      // Re-sends canonical production context to FINAL SAFE without mutating job/order state.
+      if (request.method === "GET" && path === "/test/replay-existing-hooks-canary") {
+        const expectedHost = "selling-flow-v1-make-you-stop-upload.tripsdelivered.workers.dev";
+        const canaryJobId = "job_02ca17db91627381330247d5";
+        const canaryOrderId = "ord_c77bbc78a180401cea0fa893";
+
+        if (url.hostname !== expectedHost) {
+          return html("<h1>Not available outside the preview Worker.</h1>", 404);
+        }
+        if (!env.UPLOAD_SECRET || !env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) {
+          return html("<h1>Replay is not configured.</h1>", 500);
+        }
+
+        const contextRequest = new Request(`https://internal.invalid/api/jobs/${canaryJobId}/production-context`, {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${env.UPLOAD_SECRET}` }
+        });
+        const contextResponse = await productionContext(contextRequest, env, canaryJobId);
+        const productionPayload = await contextResponse.json().catch(() => null);
+
+        if (!contextResponse.ok || !productionPayload || productionPayload.contract !== "production_context_v1") {
+          return html(`<h1>Replay blocked.</h1><p>Could not load canonical production context.</p>`, 409);
+        }
+
+        if (
+          productionPayload?.job?.job_id !== canaryJobId ||
+          productionPayload?.job?.order_id !== canaryOrderId ||
+          productionPayload?.job?.product_key !== "hooks"
+        ) {
+          return html("<h1>Replay blocked.</h1><p>Canary identity did not match the locked Hooks test.</p>", 409);
+        }
+
+        const makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
+          },
+          body: JSON.stringify(productionPayload)
+        });
+
+        if (!makeResponse.ok) {
+          return html(`<h1>Replay failed.</h1><p>FINAL SAFE ingress returned HTTP ${makeResponse.status}.</p>`, 502);
+        }
+
+        return html("<!doctype html><html><body style='font-family:Arial;padding:40px;max-width:760px'><h1>Existing Hooks canary re-sent.</h1><p>The same canonical paid Hooks job was sent to FINAL SAFE v4. No new Stripe payment was created and canonical order/job state was not changed.</p><p>Now open FINAL SAFE v4 / Shared SAFE v2 History and inspect the new run.</p></body></html>");
+      }
+
       const productionContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/production-context$/);
       if (request.method === "GET" && productionContextMatch) {
         return productionContext(request, env, productionContextMatch[1]);
