@@ -8,6 +8,10 @@ MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/jqatv3jugzj2nlreozpfwuu
 [previews.vars]
 MAKE_PRODUCTION_INGRESS_URL = "https://hook.us2.make.com/vxxhx9yxa17esgwidwcvn8u1gj2f2rju"
 
+[[previews.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "make-you-stop-deliverables"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "make-you-stop-deliverables"
