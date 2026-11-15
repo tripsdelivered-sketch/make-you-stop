@@ -569,7 +569,60 @@ function applyReturnOrderContext(){
   }
 }
 
+function applyControlledTestContext(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('controlled_test')!=='image_words')return;
+
+  const product=catalog.find(p=>p.key==='image_words');
+  if(!product)return;
+
+  audience='creator';
+  selectedNiches=['Beauty / Skincare'];
+  primaryKeys=new Set(['image_words']);
+  recommendedKeys=new Set();
+
+  cart=[{
+    id:'controlled_image_words_preview',
+    key:'image_words',
+    name:product.name,
+    price:product.price,
+    audience:'creator',
+    qty:1,
+    unitNiches:['Beauty / Skincare'],
+    brief:null,
+    intentId:null
+  }];
+
+  $('#shopAudienceLabel').textContent='Creator shop';
+  $('#shopNicheLabel').textContent='Beauty / Skincare';
+  show($('#helpFlow'));
+  show($('#shopResults'));
+  renderProducts();
+  renderCart();
+  openSmartBrief();
+
+  $('#briefPromotion').value='Realistic, affordable beauty content for everyday women who want simple makeup and skincare ideas that are practical and easy to follow.';
+  $('#briefBrand').value='I create relatable Beauty / Skincare content for women who enjoy makeup and skincare but do not want complicated routines or to buy every viral product. I share realistic routines, affordable beauty finds, honest product opinions and simple everyday tips.';
+  $('#briefMessage').value='Beauty does not have to be complicated or expensive. Small changes to your routine can make everyday makeup and skincare feel easier, more achievable and more enjoyable.';
+
+  const tiktok=document.querySelector('input[name="briefPlatform"][value="TikTok"]');
+  if(tiktok)tiktok.checked=true;
+
+  const cta=$('#briefCta');
+  if(cta)cta.value='Follow my page for realistic beauty routines, honest product finds and simple everyday beauty ideas.';
+
+  const url=$('#briefUrl');
+  if(url)url.value='https://makeyoustop.com';
+
+  const assets=$('#briefAssets');
+  if(assets)assets.value='mys_decide';
+
+  $('#briefNotes').value='Create one finished static Image / Words social creative with a clear story or message. Keep it relatable, visually clear and social-first. Include strong on-image wording, caption direction, CTA direction and useful topic suggestions. Avoid clickbait or overly polished advertising language.';
+  $('#briefStatus').textContent='Controlled Image / Words test prefill — review, then continue to Stripe Sandbox.';
+}
+
 renderCart();
 applyReturnOrderContext();
+applyControlledTestContext();
 </script>
 </body></html>
