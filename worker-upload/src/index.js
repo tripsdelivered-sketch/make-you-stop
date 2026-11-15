@@ -725,9 +725,22 @@ export default {
 
     try {
       if (request.method === "GET" && path === "/preview/storefront") {
-        const target = new URL("https://cdn.jsdelivr.net/gh/tripsdelivered-sketch/make-you-stop@selling-flow-v1/index.html");
-        for (const [key, value] of url.searchParams.entries()) target.searchParams.set(key, value);
-        return Response.redirect(target.toString(), 302);
+        const sourceUrl = "https://cdn.jsdelivr.net/gh/tripsdelivered-sketch/make-you-stop@selling-flow-v1/index.html";
+        const sourceResponse = await fetch(sourceUrl, { cf: { cacheTtl: 0, cacheEverything: false } });
+        if (!sourceResponse.ok) {
+          return new Response("Unable to load storefront preview.", { status: 502 });
+        }
+        let html = await sourceResponse.text();
+        const baseTag = '<base href="https://cdn.jsdelivr.net/gh/tripsdelivered-sketch/make-you-stop@selling-flow-v1/">';
+        html = html.replace("<head>", "<head>" + baseTag);
+        return new Response(html, {
+          status: 200,
+          headers: {
+            "content-type": "text/html; charset=UTF-8",
+            "cache-control": "no-store",
+            "x-robots-tag": "noindex, nofollow"
+          }
+        });
       }
 
       if (request.method === "GET" && path === "/health") {
