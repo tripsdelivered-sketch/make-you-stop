@@ -515,11 +515,11 @@ function cleanBrief(value) {
 
 const MAKE_LANE_BY_CANONICAL = {
   hooks: "Hooks only",
-  image_words: "Image",
-  video_reel: "video_reel",
+  image_words: "Image / Words",
+  video_reel: "Video/Reel",
   guide_ebook: "Guide / eBook",
-  storyboard: "storyboard",
-  storyboard_showcase: "storyboard_showcase",
+  storyboard: "Storyboard Pack",
+  storyboard_showcase: "Storyboard + Showcase",
   what_to_say_guide: "What to Say Guide",
   unboxing_product_reveal: "Unboxing / Product Reveal",
   "Storyboard / Showcase": "Storyboard / Showcase"
@@ -622,6 +622,8 @@ function makeExecutionContract({ job, order, manifest, shoppingIntent, intake, i
     delivery_order: Number(job.delivery_order || 1),
     canonical_requested_lane: job.requested_lane,
     requested_lane: makeRequestedLane(job.requested_lane),
+    production_status: job.status || null,
+    intake_status: job.intake_status || null,
     manifest,
     output_requirements: manifest?.output_requirements || null,
 
@@ -1566,6 +1568,10 @@ export async function productionContext(request, env, jobId) {
     engine_contract: "make_execution_v1",
     execution_contract: executionContract,
     engine_context: executionContract,
+    production_status: job.status || null,
+    intake_status: job.intake_status || null,
+    requested_lane: makeRequestedLane(job.requested_lane),
+    canonical_requested_lane: job.requested_lane,
     job: {
       job_id: job.job_id,
       order_id: job.order_id,
