@@ -1024,17 +1024,25 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
           return html("<h1>Replay blocked.</h1><p>Canary identity did not match the locked Hooks test.</p>", 409);
         }
 
-        const makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
-          },
-          body: JSON.stringify(productionPayload)
-        });
+        let makeResponse;
+        try {
+          makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
+            },
+            body: JSON.stringify(productionPayload)
+          });
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          return html(`<h1>Replay failed before FINAL SAFE accepted the canary.</h1><p>Make ingress fetch threw an exception.</p><pre>${detail.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>`, 502);
+        }
 
         if (!makeResponse.ok) {
-          return html(`<h1>Replay failed.</h1><p>FINAL SAFE ingress returned HTTP ${makeResponse.status}.</p>`, 502);
+          const responseText = await makeResponse.text().catch(() => "");
+          const safeDetail = responseText.slice(0, 1200).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+          return html(`<h1>Replay failed.</h1><p>FINAL SAFE ingress returned HTTP ${makeResponse.status}.</p><pre>${safeDetail}</pre>`, 502);
         }
 
         return html("<!doctype html><html><body style='font-family:Arial;padding:40px;max-width:760px'><h1>Existing Hooks canary re-sent.</h1><p>The same canonical paid Hooks job was sent to FINAL SAFE v4. No new Stripe payment was created and canonical order/job state was not changed.</p><p>Now open FINAL SAFE v4 / Shared SAFE v2 History and inspect the new run.</p></body></html>");
