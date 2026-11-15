@@ -308,12 +308,13 @@ export async function canvaAutofill(request, env) {
     } catch (error) {
       return json({
         success:false,
+        diagnostic_only:true,
         error:"Canva dataset lookup failed",
         stage:"dataset_lookup",
         source_type:hasDesign ? "design" : "brand_template",
         source_id:sourceId,
         detail:error instanceof Error ? error.message : String(error)
-      },502);
+      }, new URL(request.url).hostname.startsWith("selling-flow-v1-") ? 200 : 502);
     }
 
     const dataset = datasetResult?.dataset || {};
@@ -349,6 +350,7 @@ export async function canvaAutofill(request, env) {
     } catch (error) {
       return json({
         success:false,
+        diagnostic_only:true,
         error:"Canva autofill request failed",
         stage:"autofill_request",
         source_type:hasDesign ? "design" : "brand_template",
@@ -357,7 +359,7 @@ export async function canvaAutofill(request, env) {
         matched_fields:Object.keys(normalised.data),
         skipped_fields:normalised.skipped,
         detail:error instanceof Error ? error.message : String(error)
-      },502);
+      }, new URL(request.url).hostname.startsWith("selling-flow-v1-") ? 200 : 502);
     }
 
     return json({
