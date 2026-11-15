@@ -178,20 +178,26 @@ export async function canvaAuthStart(request, env) {
 }
 
 export async function canvaCallback(request, env) {
-  await ensureTables(env);
-  if (!configured(env)) return html("<h1>Canva is not configured.</h1>",500);
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  if (!code || !state) return html("<h1>Canva authorization was not completed.</h1>",400);
-  const stateHash = await sha256Hex(state);
-  const row = await env.DB.prepare("SELECT verifier_encrypted,expires_at FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).first();
-  if (!row || new Date(row.expires_at).getTime() < Date.now()) return html("<h1>This Canva authorization session is invalid or expired.</h1>",400);
-  const verifier = await decrypt(row.verifier_encrypted,env);
-  const data = await tokenRequest(env,{grant_type:"authorization_code",code,code_verifier:verifier,redirect_uri:redirectUri(request)});
-  await saveTokens(env,data);
-  await env.DB.prepare("DELETE FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).run();
-  return html("<!doctype html><html><body style='font-family:Arial;padding:40px'><h1>Canva connected to Make You Stop.</h1><p>You can close this tab.</p></body></html>");
+  try {
+    await ensureTables(env);
+    if (!configured(env)) return html("<h1>Canva is not configured.</h1>",500);
+    const url = new URL(request.url);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if (!code || !state) return html("<h1>Canva authorization was not completed.</h1>",400);
+    const stateHash = await sha256Hex(state);
+    const row = await env.DB.prepare("SELECT verifier_encrypted,expires_at FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).first();
+    if (!row || new Date(row.expires_at).getTime() < Date.now()) return html("<h1>This Canva authorization session is invalid or expired.</h1>",400);
+    const verifier = await decrypt(row.verifier_encrypted,env);
+    const data = await tokenRequest(env,{grant_type:"authorization_code",code,code_verifier:verifier,redirect_uri:redirectUri(request)});
+    await saveTokens(env,data);
+    await env.DB.prepare("DELETE FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).run();
+    return html("<!doctype html><html><body style='font-family:Arial;padding:40px'><h1>Canva connected to Make You Stop.</h1><p>You can close this tab.</p></body></html>");
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("Canva OAuth callback failed", detail);
+    return html(`<!doctype html><html><body style="font-family:Arial;padding:40px;max-width:760px"><h1>Canva connection failed</h1><p>${detail.replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;","\"":"&quot;"}[c]))}</p><p>Please keep this page open and report this exact message.</p></body></html>`,500);
+  }
 }
 
 export async function canvaCreateDesign(request, env) {
