@@ -362,6 +362,61 @@ export async function canvaAutofill(request, env) {
       }, new URL(request.url).hostname.startsWith("selling-flow-v1-") ? 200 : 502);
     }
 
+    // Canva autofill is asynchronous. For preview-controlled Make tests, wait here
+    // until the job yields the finished design so downstream Make receives design_id.
+    const isPreview = new URL(request.url).hostname.startsWith("selling-flow-v1-");
+    let finalResult = result;
+    let autofillJobId = result?.job?.id || null;
+    let autofillStatus = result?.job?.status || null;
+
+    if (isPreview && autofillJobId && autofillStatus === "in_progress") {
+      const statuses = [autofillStatus];
+      const maxAttempts = 12;
+      const intervalMs = 1500;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        if (attempt > 1) await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        try {
+          finalResult = await canvaFetch(env,`/autofills/${encodeURIComponent(autofillJobId)}`,{method:"GET"});
+        } catch (error) {
+          return json({
+            success:false,
+            diagnostic_only:true,
+            error:"Canva autofill status lookup failed",
+            stage:"autofill_wait",
+            source_type:hasDesign ? "design" : "brand_template",
+            source_id:sourceId,
+            autofill_mode:payload.type,
+            autofill_job_id:autofillJobId,
+            statuses,
+            detail:error instanceof Error ? error.message : String(error)
+          },200);
+        }
+
+        autofillStatus = finalResult?.job?.status || "unknown";
+        statuses.push(autofillStatus);
+        if (autofillStatus === "success" || autofillStatus === "failed") break;
+      }
+
+      if (autofillStatus !== "success") {
+        return json({
+          success:false,
+          diagnostic_only:true,
+          error:autofillStatus === "failed" ? "Canva autofill job failed" : "Canva autofill job did not complete in time",
+          stage:"autofill_wait",
+          source_type:hasDesign ? "design" : "brand_template",
+          source_id:sourceId,
+          autofill_mode:payload.type,
+          autofill_job_id:autofillJobId,
+          status:autofillStatus,
+          statuses,
+          canva_error:finalResult?.job?.error || null
+        },200);
+      }
+    }
+
+    const designId = finalResult?.job?.result?.design?.id || null;
+
     return json({
       success:true,
       source_type:hasDesign ? "design" : "brand_template",
@@ -369,7 +424,10 @@ export async function canvaAutofill(request, env) {
       autofill_mode:payload.type,
       matched_fields:Object.keys(normalised.data),
       skipped_fields:normalised.skipped,
-      result
+      autofill_job_id:autofillJobId,
+      status:finalResult?.job?.status || autofillStatus,
+      design_id:designId,
+      result:finalResult
     });
   } catch (error) {
     return json({
