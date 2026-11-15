@@ -111,7 +111,7 @@ const CORE_MANIFESTS = [
     display_name: "Image / Words",
     manifest_version: 1,
     jobs: [
-      { job_key: "image_words", role: "primary", deliverable_type: "image_words", requested_lane: "image_words", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
+      { job_key: "image_words", role: "primary", deliverable_type: "image_words", requested_lane: "Image / Words", counts_toward_expected: true, sequence_index: 1, delivery_order: 1, intake_type: "creative_brief" }
     ]
   },
   {
@@ -949,7 +949,7 @@ function landingBriefCanStartProduction(productKey, brief) {
   if (!brief || typeof brief !== "object") return false;
   const hasCore = Boolean(brief.promotion_subject && brief.brand_summary && brief.key_message);
   if (!hasCore) return false;
-  return new Set(["hooks", "what_to_say_guide"]).has(productKey);
+  return new Set(["hooks", "image_words", "what_to_say_guide"]).has(productKey);
 }
 
 async function applyLandingBriefAsIntake(env, orderId, jobs, shoppingIntent) {
