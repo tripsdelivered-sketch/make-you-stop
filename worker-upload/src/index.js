@@ -944,6 +944,94 @@ document.querySelector('#hookCheckoutForm').addEventListener('submit',()=>{
         return Response.redirect(stripe.toString(), 303);
       }
 
+
+      if (request.method === "GET" && path === "/image-words-test") {
+        return html(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Make You Stop — Image / Words Sandbox Test</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.45}
+h1{font-size:32px;margin-bottom:8px}.card{border:1px solid #ddd;border-radius:18px;padding:24px;margin-top:24px}
+label{display:block;font-weight:700;margin-top:18px}textarea,input{width:100%;box-sizing:border-box;padding:12px;margin-top:7px;border:1px solid #bbb;border-radius:10px;font:inherit}
+.row{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}.row label{font-weight:400;margin:0}
+button{margin-top:24px;padding:14px 18px;border:0;border-radius:12px;background:#111;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}.note{font-size:14px;color:#555;margin-top:12px}.status{font-weight:700;margin-top:14px}
+</style>
+</head>
+<body>
+<h1>Image / Words — Sandbox Test</h1>
+<p>This page is only for the controlled selling-flow test on <strong>selling-flow-v1</strong>.</p>
+<div class="card">
+<label>What are you promoting?<textarea name="promotion_subject" form="imageWordsCheckoutForm" rows="3">Realistic, affordable beauty content for everyday women who want simple makeup and skincare ideas that are practical and easy to follow.</textarea></label>
+<label>Tell us a little about your brand, business or page<textarea name="brand_summary" form="imageWordsCheckoutForm" rows="4">I create relatable Beauty / Skincare content for women who enjoy makeup and skincare but do not want complicated routines or to buy every viral product. I share realistic routines, affordable beauty finds, honest product opinions and simple everyday tips.</textarea></label>
+<label>What would you like people to know?<textarea name="key_message" form="imageWordsCheckoutForm" rows="4">Beauty does not have to be complicated or expensive. Small changes to your routine can make everyday makeup and skincare feel easier, more achievable and more enjoyable.</textarea></label>
+<label>Where will you use it?</label>
+<div class="row"><label><input type="checkbox" name="platform_ui" value="TikTok" checked> TikTok</label><label><input type="checkbox" name="platform_ui" value="Instagram / Reels"> Instagram / Reels</label></div>
+<label>What should people do next?<input name="cta" form="imageWordsCheckoutForm" value="Follow my page for realistic beauty routines, honest product finds and simple everyday beauty ideas."></label>
+<label>Approved link or destination<input name="destination_url" form="imageWordsCheckoutForm" value="https://makeyoustop.com"></label>
+<label>Anything else you'd like us to know?<textarea name="extra_notes" form="imageWordsCheckoutForm" rows="4">Create one finished static Image / Words creative built around one clear story or message. The on-image wording must be part of the concept, with caption direction, CTA direction and useful topic suggestions.</textarea></label>
+<form method="POST" action="/image-words-checkout" id="imageWordsCheckoutForm">
+<input type="hidden" name="platforms" id="f_platforms">
+<input type="hidden" name="asset_status" value="mys_decide">
+<button id="go" type="submit">Continue to Stripe Sandbox</button>
+</form>
+<div id="status" class="status">Ready.</div>
+<div class="note">Creator · Beauty / Skincare · 1 Image / Words Creative · Stripe Sandbox only.</div>
+</div>
+<script>
+document.querySelector('#imageWordsCheckoutForm').addEventListener('submit',()=>{
+  document.querySelector('#status').textContent='Preparing secure checkout…';
+  document.querySelector('#go').disabled=true;
+  document.querySelector('#f_platforms').value=[...document.querySelectorAll('input[name=platform_ui]:checked')].map(x=>x.value).join('|');
+});
+</script>
+</body></html>`);
+      }
+
+      if (request.method === "POST" && path === "/image-words-checkout") {
+        const form = await request.formData();
+        const payload = {
+          audience: "creator",
+          niches: ["Beauty / Skincare"],
+          product_key: "image_words",
+          brief: {
+            promotion_subject: String(form.get("promotion_subject") || "").trim(),
+            brand_summary: String(form.get("brand_summary") || "").trim(),
+            key_message: String(form.get("key_message") || "").trim(),
+            platforms: String(form.get("platforms") || "").split("|").map((v) => v.trim()).filter(Boolean),
+            cta: String(form.get("cta") || "").trim(),
+            destination_url: String(form.get("destination_url") || "").trim(),
+            asset_status: String(form.get("asset_status") || "mys_decide").trim(),
+            extra_notes: String(form.get("extra_notes") || "").trim()
+          },
+          source: "website"
+        };
+
+        const intentRequest = new Request(new URL("/api/shop-intents", request.url), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const intentResponse = await createShoppingIntent(intentRequest, env);
+        const intentData = await intentResponse.json().catch(() => ({}));
+
+        if (!intentResponse.ok || !intentData.success || !intentData.intent_id) {
+          return html(`<!doctype html><html><body style="font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px">
+          <h1>Checkout setup error</h1>
+          <p><strong>${String(intentData.error || "Unable to prepare checkout")}</strong></p>
+          <pre style="white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:12px">${String(intentData.detail || "No backend detail returned.")}</pre>
+          <p><a href="/image-words-test">Back to Image / Words test</a></p>
+          </body></html>`, intentResponse.status || 500);
+        }
+
+        const stripe = new URL("https://buy.stripe.com/test_28E5kC7alcHR8iY8nifMA03");
+        stripe.searchParams.set("client_reference_id", intentData.intent_id);
+        return Response.redirect(stripe.toString(), 303);
+      }
+
       if (request.method === "GET" && path === "/api/commerce/status") {
         return commerceStatus(request, env);
       }
