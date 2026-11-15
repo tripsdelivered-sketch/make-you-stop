@@ -724,6 +724,12 @@ export default {
     const path = url.pathname;
 
     try {
+      if (request.method === "GET" && path === "/preview/storefront") {
+        const target = new URL("https://cdn.jsdelivr.net/gh/tripsdelivered-sketch/make-you-stop@selling-flow-v1/index.html");
+        for (const [key, value] of url.searchParams.entries()) target.searchParams.set(key, value);
+        return Response.redirect(target.toString(), 302);
+      }
+
       if (request.method === "GET" && path === "/health") {
         return json({
           success: true,
