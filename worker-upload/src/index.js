@@ -1161,6 +1161,70 @@ document.querySelector('#imageWordsCheckoutForm').addEventListener('submit',()=>
         }
       }
 
+
+      // Preview-only controlled replay for the existing paid Image / Words canary.
+      // Re-sends canonical production context to FINAL SAFE without mutating job/order state.
+      if (request.method === "GET" && path === "/test/replay-existing-image-words-canary") {
+        try {
+          const expectedHost = "selling-flow-v1-make-you-stop-upload.tripsdelivered.workers.dev";
+          const canaryJobId = "job_4e3d9dfce1ff48a818ac5c1a";
+          const canaryOrderId = "ord_c8599be30e01fe8019f010b7";
+
+          if (url.hostname !== expectedHost) {
+            return html("<h1>Not available outside the preview Worker.</h1>", 404);
+          }
+          if (!env.UPLOAD_SECRET || !env.MAKE_PRODUCTION_INGRESS_URL || !env.MAKE_PRODUCTION_INGRESS_API_KEY) {
+            return html("<h1>Replay is not configured.</h1>", 500);
+          }
+
+          const contextRequest = new Request(`https://internal.invalid/api/jobs/${canaryJobId}/production-context`, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${env.UPLOAD_SECRET}` }
+          });
+          const contextResponse = await productionContext(contextRequest, env, canaryJobId);
+          const productionPayload = await contextResponse.json().catch(() => null);
+
+          if (!contextResponse.ok || !productionPayload || productionPayload.contract !== "production_context_v1") {
+            return html("<h1>Replay blocked.</h1><p>Could not load canonical production context.</p>", 409);
+          }
+
+          if (
+            productionPayload?.job?.job_id !== canaryJobId ||
+            productionPayload?.job?.order_id !== canaryOrderId ||
+            productionPayload?.job?.product_key !== "image_words"
+          ) {
+            return html("<h1>Replay blocked.</h1><p>Canary identity did not match the locked Image / Words paid order.</p>", 409);
+          }
+
+          let makeResponse;
+          try {
+            makeResponse = await fetch(env.MAKE_PRODUCTION_INGRESS_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-make-apikey": env.MAKE_PRODUCTION_INGRESS_API_KEY
+              },
+              body: JSON.stringify(productionPayload)
+            });
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : String(error);
+            return html(`<h1>Replay failed before FINAL SAFE accepted the canary.</h1><p>Make ingress fetch threw an exception.</p><pre>${detail.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>`, 502);
+          }
+
+          if (!makeResponse.ok) {
+            const responseText = await makeResponse.text().catch(() => "");
+            const safeDetail = responseText.slice(0, 1200).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+            return html(`<h1>Replay failed.</h1><p>FINAL SAFE ingress returned HTTP ${makeResponse.status}.</p><pre>${safeDetail}</pre>`, 502);
+          }
+
+          return html("<!doctype html><html><body style='font-family:Arial;padding:40px;max-width:760px'><h1>Existing Image / Words canary re-sent.</h1><p>The same canonical paid Image / Words job was sent to FINAL SAFE v4. No new Stripe payment was created and canonical order/job state was not changed.</p><p>Now inspect FINAL SAFE v4 / Shared SAFE v2 History for the new run.</p></body></html>");
+        } catch (error) {
+          const detail = error instanceof Error ? (error.stack || error.message) : String(error);
+          const safeDetail = String(detail).slice(0, 4000).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+          return html(`<h1>Replay helper exception captured.</h1><p>The preview Worker caught an exception before completion.</p><pre>${safeDetail}</pre>`, 500);
+        }
+      }
+
       const productionContextMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)\/production-context$/);
       if (request.method === "GET" && productionContextMatch) {
         return productionContext(request, env, productionContextMatch[1]);
