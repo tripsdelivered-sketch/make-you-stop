@@ -242,9 +242,30 @@ async function uploadObject(request, env) {
     return json({ success: false, error: "Content type does not match object type" }, 400);
   }
 
-  await env.BUCKET.put(objectKey, request.body, {
-    httpMetadata: { contentType: mimeType }
-  });
+  if (!env.BUCKET || typeof env.BUCKET.put !== "function") {
+    return json({
+      success: false,
+      error: "R2 bucket binding is not configured",
+      binding: "BUCKET",
+      bucket: BUCKET_NAME
+    }, 500);
+  }
+
+  try {
+    await env.BUCKET.put(objectKey, request.body, {
+      httpMetadata: { contentType: mimeType }
+    });
+  } catch (error) {
+    return json({
+      success: false,
+      error: "R2 upload failed",
+      detail: error instanceof Error ? error.message : String(error),
+      binding: "BUCKET",
+      bucket: BUCKET_NAME,
+      r2_key: objectKey,
+      mime_type: mimeType
+    }, 500);
+  }
 
   return json({
     success: true,
