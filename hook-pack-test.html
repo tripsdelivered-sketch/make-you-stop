@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Make You Stop — Hook Pack Sandbox Test</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.45}
+h1{font-size:32px;margin-bottom:8px}
+.card{border:1px solid #ddd;border-radius:18px;padding:24px;margin-top:24px}
+label{display:block;font-weight:700;margin-top:18px}
+textarea,input{width:100%;box-sizing:border-box;padding:12px;margin-top:7px;border:1px solid #bbb;border-radius:10px;font:inherit}
+.row{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.row label{font-weight:400;margin:0}
+button{margin-top:24px;padding:14px 18px;border:0;border-radius:12px;background:#111;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}
+.note{font-size:14px;color:#555;margin-top:12px}
+.status{font-weight:700;margin-top:14px}
+</style>
+</head>
+<body>
+<h1>Hook Pack — Sandbox Test</h1>
+<p>This page is only for the controlled selling-flow test on <strong>selling-flow-v1</strong>.</p>
+<div class="card">
+<label>What are you promoting?
+<textarea id="promotion" rows="3">My beauty creator page and my realistic, affordable beauty content</textarea></label>
+
+<label>Tell us a little about your brand, business or page
+<textarea id="brand" rows="4">I create relatable beauty content for women who love makeup and skincare but do not want complicated routines or to buy every viral product. I share GRWM videos, affordable beauty finds, honest product opinions and simple makeup-prep routines that are realistic for everyday life.</textarea></label>
+
+<label>What would you like people to know?
+<textarea id="message" rows="4">Beauty does not have to be complicated or expensive. I want to show people practical things they can try, products that may be worth looking at, and small routine changes that can make everyday makeup feel easier.</textarea></label>
+
+<label>Where will you use it?</label>
+<div class="row">
+<label><input type="checkbox" name="platform" value="TikTok" checked> TikTok</label>
+<label><input type="checkbox" name="platform" value="Instagram / Reels" checked> Instagram / Reels</label>
+</div>
+
+<label>What should people do next?
+<input id="cta" value="Follow my page for realistic beauty routines, honest product finds and simple makeup ideas"></label>
+
+<label>Approved link or destination
+<input id="url" value="https://makeyoustop.com"></label>
+
+<label>Anything else you'd like us to know?
+<textarea id="notes" rows="3">I want the hooks to feel conversational and specific to real beauty frustrations or routines. They should create curiosity without sounding like clickbait and should lead naturally into showing a routine, product, comparison or result.</textarea></label>
+
+<button id="go">Continue to Stripe Sandbox</button>
+<div id="status" class="status">Ready.</div>
+<div class="note">No real money is used. This creates the shopping intent first, then opens the existing Hook Pack Stripe Sandbox checkout.</div>
+</div>
+<script>
+const worker='https://selling-flow-v1-make-you-stop-upload.tripsdelivered.workers.dev/api/shop-intents';
+const checkout='https://buy.stripe.com/test_14A00i1Q1azJ2YE5b6fMA02';
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+$('#go').addEventListener('click',async()=>{
+  const btn=$('#go'), status=$('#status');
+  btn.disabled=true; status.textContent='Preparing secure checkout…';
+  const brief={
+    promotion_subject:$('#promotion').value.trim(),
+    brand_summary:$('#brand').value.trim(),
+    key_message:$('#message').value.trim(),
+    platforms:$$('input[name=platform]:checked').map(x=>x.value),
+    cta:$('#cta').value.trim(),
+    destination_url:$('#url').value.trim(),
+    extra_notes:$('#notes').value.trim()
+  };
+  try{
+    const r=await fetch(worker,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        audience:'creator',
+        niches:['Beauty / Skincare'],
+        product_key:'hooks',
+        brief,
+        source:'website'
+      })
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||!data.success)throw new Error(data.error||'Unable to prepare checkout');
+    const u=new URL(checkout);
+    u.searchParams.set('client_reference_id',data.intent_id);
+    window.location.href=u.toString();
+  }catch(e){
+    status.textContent=e.message||'Unable to prepare checkout';
+    btn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>

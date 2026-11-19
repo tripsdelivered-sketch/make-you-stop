@@ -102,7 +102,9 @@ function redirectUri(request) {
 }
 
 async function tokenRequest(env, params) {
-  const credentials = btoa(`${env.CANVA_CLIENT_ID}:${env.CANVA_CLIENT_SECRET}`);
+  const clientId = String(env.CANVA_CLIENT_ID || "").trim();
+  const clientSecret = String(env.CANVA_CLIENT_SECRET || "").trim();
+  const credentials = btoa(`${clientId}:${clientSecret}`);
   const response = await fetch(`${API}/oauth/token`, {
     method:"POST",
     headers:{"Authorization":`Basic ${credentials}`,"Content-Type":"application/x-www-form-urlencoded"},
@@ -178,20 +180,26 @@ export async function canvaAuthStart(request, env) {
 }
 
 export async function canvaCallback(request, env) {
-  await ensureTables(env);
-  if (!configured(env)) return html("<h1>Canva is not configured.</h1>",500);
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  if (!code || !state) return html("<h1>Canva authorization was not completed.</h1>",400);
-  const stateHash = await sha256Hex(state);
-  const row = await env.DB.prepare("SELECT verifier_encrypted,expires_at FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).first();
-  if (!row || new Date(row.expires_at).getTime() < Date.now()) return html("<h1>This Canva authorization session is invalid or expired.</h1>",400);
-  const verifier = await decrypt(row.verifier_encrypted,env);
-  const data = await tokenRequest(env,{grant_type:"authorization_code",code,code_verifier:verifier,redirect_uri:redirectUri(request)});
-  await saveTokens(env,data);
-  await env.DB.prepare("DELETE FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).run();
-  return html("<!doctype html><html><body style='font-family:Arial;padding:40px'><h1>Canva connected to Make You Stop.</h1><p>You can close this tab.</p></body></html>");
+  try {
+    await ensureTables(env);
+    if (!configured(env)) return html("<h1>Canva is not configured.</h1>",500);
+    const url = new URL(request.url);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if (!code || !state) return html("<h1>Canva authorization was not completed.</h1>",400);
+    const stateHash = await sha256Hex(state);
+    const row = await env.DB.prepare("SELECT verifier_encrypted,expires_at FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).first();
+    if (!row || new Date(row.expires_at).getTime() < Date.now()) return html("<h1>This Canva authorization session is invalid or expired.</h1>",400);
+    const verifier = await decrypt(row.verifier_encrypted,env);
+    const data = await tokenRequest(env,{grant_type:"authorization_code",code,code_verifier:verifier,redirect_uri:redirectUri(request)});
+    await saveTokens(env,data);
+    await env.DB.prepare("DELETE FROM canva_oauth_states WHERE state_hash=?").bind(stateHash).run();
+    return html("<!doctype html><html><body style='font-family:Arial;padding:40px'><h1>Canva connected to Make You Stop.</h1><p>You can close this tab.</p></body></html>");
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("Canva OAuth callback failed", detail);
+    return html(`<!doctype html><html><body style="font-family:Arial;padding:40px;max-width:760px"><h1>Canva connection failed</h1><p>${detail.replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;","\"":"&quot;"}[c]))}</p><p>Please keep this page open and report this exact message.</p></body></html>`,500);
+  }
 }
 
 export async function canvaCreateDesign(request, env) {
@@ -218,14 +226,217 @@ export async function canvaTemplateDataset(request, env, templateId) {
   return json({success:true,result});
 }
 
+function normaliseAutofillData(rawData, dataset) {
+  const source = rawData && typeof rawData === "object" && !Array.isArray(rawData) ? rawData : {};
+  const fields = dataset && typeof dataset === "object" && !Array.isArray(dataset) ? dataset : {};
+  const data = {};
+  const skipped = [];
+
+  for (const [name, spec] of Object.entries(fields)) {
+    if (!Object.prototype.hasOwnProperty.call(source, name)) continue;
+    const value = source[name];
+    if (value === null || value === undefined || value === "") continue;
+
+    if (spec?.type === "text") {
+      if (value && typeof value === "object" && value.type === "text" && typeof value.text === "string") {
+        data[name] = {type:"text", text:value.text};
+      } else {
+        const textValue = Array.isArray(value) ? value.join(", ") : String(value);
+        data[name] = {type:"text", text:textValue};
+      }
+      continue;
+    }
+
+    if (spec?.type === "image") {
+      if (value && typeof value === "object" && (value.type === "image" || value.type === "video") && value.asset_id) {
+        data[name] = {type:value.type, asset_id:String(value.asset_id)};
+      } else if (value && typeof value === "object" && value.asset_id) {
+        data[name] = {type:"image", asset_id:String(value.asset_id)};
+      } else {
+        skipped.push({field:name, reason:"image field requires Canva asset_id"});
+      }
+      continue;
+    }
+
+    if ((spec?.type === "chart" || spec?.type === "sheet") && value && typeof value === "object" && value.type === spec.type) {
+      data[name] = value;
+      continue;
+    }
+
+    skipped.push({field:name, reason:`unsupported or invalid value for ${spec?.type || "unknown"} field`});
+  }
+
+  return {data, skipped};
+}
+
 export async function canvaAutofill(request, env) {
-  const e = needAuth(request,env); if (e) return e;
-  let body; try { body=await request.json(); } catch { body=null; }
-  if (!body || !body.brand_template_id || !body.data) return json({success:false,error:"brand_template_id and data are required"},400);
-  const payload = {brand_template_id:body.brand_template_id,data:body.data};
-  if (body.title) payload.title=String(body.title).slice(0,200);
-  const result = await canvaFetch(env,"/autofills",{method:"POST",body:JSON.stringify(payload)});
-  return json({success:true,result});
+  try {
+    const e = needAuth(request,env); if (e) return e;
+    let body; try { body=await request.json(); } catch { body=null; }
+
+    // Make can serialize a single mapped collection as a one-item array.
+    // Accept that transport shape defensively without changing the Canva contract.
+    if (Array.isArray(body)) {
+      if (body.length !== 1 || !body[0] || typeof body[0] !== "object" || Array.isArray(body[0])) {
+        return json({
+          success:false,
+          error:"Expected a single Canva autofill object",
+          stage:"validate_request",
+          received_shape:"array",
+          received_items:body.length
+        },400);
+      }
+      body = body[0];
+    }
+
+    if (!body || typeof body !== "object" || !body.data) return json({success:false,error:"data is required",stage:"validate_request"},400);
+
+    const hasBrandTemplate = Boolean(body.brand_template_id);
+    const hasDesign = Boolean(body.design_id);
+    if (hasBrandTemplate === hasDesign) {
+      return json({success:false,error:"Provide exactly one of brand_template_id or design_id",stage:"validate_source"},400);
+    }
+
+    const sourceId = String(hasDesign ? body.design_id : body.brand_template_id);
+    const datasetPath = hasDesign
+      ? `/designs/${encodeURIComponent(sourceId)}/dataset`
+      : `/brand-templates/${encodeURIComponent(sourceId)}/dataset`;
+
+    let datasetResult;
+    try {
+      datasetResult = await canvaFetch(env,datasetPath,{method:"GET"});
+    } catch (error) {
+      return json({
+        success:false,
+        diagnostic_only:true,
+        error:"Canva dataset lookup failed",
+        stage:"dataset_lookup",
+        source_type:hasDesign ? "design" : "brand_template",
+        source_id:sourceId,
+        detail:error instanceof Error ? error.message : String(error)
+      }, new URL(request.url).hostname.startsWith("selling-flow-v1-") ? 200 : 502);
+    }
+
+    const dataset = datasetResult?.dataset || {};
+    const normalised = normaliseAutofillData(body.data,dataset);
+
+    if (!Object.keys(normalised.data).length) {
+      return json({
+        success:false,
+        error:"No valid Canva autofill fields matched the source dataset",
+        stage:"normalise_fields",
+        source_type:hasDesign ? "design" : "brand_template",
+        source_id:sourceId,
+        available_fields:Object.keys(dataset),
+        skipped_fields:normalised.skipped
+      },422);
+    }
+
+    const payload = {data:normalised.data};
+
+    if (hasDesign) {
+      payload.type = body.update_in_place ? "update_design" : "create_from_design";
+      payload.design_id = sourceId;
+    } else {
+      payload.type = "create_from_brand_template";
+      payload.brand_template_id = sourceId;
+    }
+
+    if (body.title && !body.update_in_place) payload.title=String(body.title).slice(0,200);
+
+    let result;
+    try {
+      result = await canvaFetch(env,"/autofills",{method:"POST",body:JSON.stringify(payload)});
+    } catch (error) {
+      return json({
+        success:false,
+        diagnostic_only:true,
+        error:"Canva autofill request failed",
+        stage:"autofill_request",
+        source_type:hasDesign ? "design" : "brand_template",
+        source_id:sourceId,
+        autofill_mode:payload.type,
+        matched_fields:Object.keys(normalised.data),
+        skipped_fields:normalised.skipped,
+        detail:error instanceof Error ? error.message : String(error)
+      }, new URL(request.url).hostname.startsWith("selling-flow-v1-") ? 200 : 502);
+    }
+
+    // Canva autofill is asynchronous. For preview-controlled Make tests, wait here
+    // until the job yields the finished design so downstream Make receives design_id.
+    const isPreview = new URL(request.url).hostname.startsWith("selling-flow-v1-");
+    let finalResult = result;
+    let autofillJobId = result?.job?.id || null;
+    let autofillStatus = result?.job?.status || null;
+
+    if (isPreview && autofillJobId && autofillStatus === "in_progress") {
+      const statuses = [autofillStatus];
+      const maxAttempts = 12;
+      const intervalMs = 1500;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        if (attempt > 1) await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        try {
+          finalResult = await canvaFetch(env,`/autofills/${encodeURIComponent(autofillJobId)}`,{method:"GET"});
+        } catch (error) {
+          return json({
+            success:false,
+            diagnostic_only:true,
+            error:"Canva autofill status lookup failed",
+            stage:"autofill_wait",
+            source_type:hasDesign ? "design" : "brand_template",
+            source_id:sourceId,
+            autofill_mode:payload.type,
+            autofill_job_id:autofillJobId,
+            statuses,
+            detail:error instanceof Error ? error.message : String(error)
+          },200);
+        }
+
+        autofillStatus = finalResult?.job?.status || "unknown";
+        statuses.push(autofillStatus);
+        if (autofillStatus === "success" || autofillStatus === "failed") break;
+      }
+
+      if (autofillStatus !== "success") {
+        return json({
+          success:false,
+          diagnostic_only:true,
+          error:autofillStatus === "failed" ? "Canva autofill job failed" : "Canva autofill job did not complete in time",
+          stage:"autofill_wait",
+          source_type:hasDesign ? "design" : "brand_template",
+          source_id:sourceId,
+          autofill_mode:payload.type,
+          autofill_job_id:autofillJobId,
+          status:autofillStatus,
+          statuses,
+          canva_error:finalResult?.job?.error || null
+        },200);
+      }
+    }
+
+    const designId = finalResult?.job?.result?.design?.id || null;
+
+    return json({
+      success:true,
+      source_type:hasDesign ? "design" : "brand_template",
+      source_id:sourceId,
+      autofill_mode:payload.type,
+      matched_fields:Object.keys(normalised.data),
+      skipped_fields:normalised.skipped,
+      autofill_job_id:autofillJobId,
+      status:finalResult?.job?.status || autofillStatus,
+      design_id:designId,
+      result:finalResult
+    });
+  } catch (error) {
+    return json({
+      success:false,
+      error:"Canva autofill bridge failed",
+      stage:"bridge_exception",
+      detail:error instanceof Error ? error.message : String(error)
+    },500);
+  }
 }
 
 export async function canvaExport(request, env) {
@@ -236,75 +447,109 @@ export async function canvaExport(request, env) {
   if (!allowed.has(body.format)) return json({success:false,error:"Unsupported export format"},400);
   const payload = {design_id:body.design_id,format:{type:body.format}};
   if (Array.isArray(body.pages) && body.pages.length) payload.format.pages=body.pages;
-  const result = await canvaFetch(env,"/exports",{method:"POST",body:JSON.stringify(payload)});
-  return json({success:true,result});
+  try {
+    const result = await canvaFetch(env,"/exports",{method:"POST",body:JSON.stringify(payload)});
+    return json({success:true,design_id:body.design_id,format:body.format,result});
+  } catch (error) {
+    const isPreview = new URL(request.url).hostname.startsWith("selling-flow-v1-");
+    return json({
+      success:false,
+      diagnostic_only:isPreview,
+      error:"Canva export request failed",
+      stage:"export_request",
+      design_id:body.design_id,
+      format:body.format,
+      payload,
+      detail:error instanceof Error ? error.message : String(error)
+    }, isPreview ? 200 : 502);
+  }
 }
 
 export async function canvaExportStore(request, env, exportId) {
   const e = needAuth(request,env); if (e) return e;
   if (!env.BUCKET) return json({success:false,error:"R2 bucket is not configured"},500);
 
-  let body; try { body=await request.json(); } catch { body=null; }
-  if (!body) return json({success:false,error:"Invalid JSON"},400);
+  let stage = "parse_request";
+  let body;
+  try {
+    try { body=await request.json(); } catch { body=null; }
+    if (!body) return json({success:false,error:"Invalid JSON"},400);
 
-  const safeId = (value) => typeof value === "string" && /^[A-Za-z0-9_-]+$/.test(value);
-  if (!safeId(body.order_id)) return json({success:false,error:"Invalid order_id"},400);
-  if (!safeId(body.job_id)) return json({success:false,error:"Invalid job_id"},400);
+    const safeId = (value) => typeof value === "string" && /^[A-Za-z0-9_-]+$/.test(value);
+    if (!safeId(body.order_id)) return json({success:false,error:"Invalid order_id"},400);
+    if (!safeId(body.job_id)) return json({success:false,error:"Invalid job_id"},400);
 
-  const formats = {
-    pdf: {ext:"pdf", mime:"application/pdf"},
-    png: {ext:"png", mime:"image/png"},
-    jpg: {ext:"jpg", mime:"image/jpeg"},
-    gif: {ext:"gif", mime:"image/gif"},
-    pptx: {ext:"pptx", mime:"application/vnd.openxmlformats-officedocument.presentationml.presentation"},
-    mp4: {ext:"mp4", mime:"video/mp4"},
-    html_bundle: {ext:"zip", mime:"application/zip"},
-    html_standalone: {ext:"html", mime:"text/html"}
-  };
+    const formats = {
+      pdf: {ext:"pdf", mime:"application/pdf"},
+      png: {ext:"png", mime:"image/png"},
+      jpg: {ext:"jpg", mime:"image/jpeg"},
+      gif: {ext:"gif", mime:"image/gif"},
+      pptx: {ext:"pptx", mime:"application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+      mp4: {ext:"mp4", mime:"video/mp4"},
+      html_bundle: {ext:"zip", mime:"application/zip"},
+      html_standalone: {ext:"html", mime:"text/html"}
+    };
 
-  const format = String(body.format || "").toLowerCase();
-  const spec = formats[format];
-  if (!spec) return json({success:false,error:"Unsupported export format"},400);
+    const format = String(body.format || "").toLowerCase();
+    const spec = formats[format];
+    if (!spec) return json({success:false,error:"Unsupported export format"},400);
 
-  const result = await canvaFetch(env,`/exports/${encodeURIComponent(exportId)}`,{method:"GET"});
-  const status = result?.job?.status || "unknown";
-  if (status !== "success") {
-    return json({success:false,error:"Canva export is not complete",status,result},409);
-  }
-
-  const urls = Array.isArray(result?.job?.urls) ? result.job.urls : [];
-  if (!urls.length || typeof urls[0] !== "string") {
-    return json({success:false,error:"Canva export completed without a download URL",result},502);
-  }
-
-  const source = await fetch(urls[0],{method:"GET"});
-  if (!source.ok || !source.body) {
-    return json({success:false,error:`Failed to download Canva export (${source.status})`},502);
-  }
-
-  const objectKey = `canva/${body.order_id}/${body.job_id}/${exportId}.${spec.ext}`;
-  const sourceMime = (source.headers.get("Content-Type") || "").split(";")[0].trim();
-  const mimeType = sourceMime || spec.mime;
-
-  await env.BUCKET.put(objectKey,source.body,{
-    httpMetadata:{contentType:mimeType},
-    customMetadata:{
-      source:"canva",
-      canva_export_id:String(exportId),
-      format
+    stage = "canva_export_status";
+    const result = await canvaFetch(env,`/exports/${encodeURIComponent(exportId)}`,{method:"GET"});
+    const status = result?.job?.status || "unknown";
+    if (status !== "success") {
+      return json({success:false,error:"Canva export is not complete",status,result},409);
     }
-  });
 
-  return json({
-    success:true,
-    stored:true,
-    export_job_id:String(exportId),
-    final_status:status,
-    bucket:"make-you-stop-deliverables",
-    r2_key:objectKey,
-    mime_type:mimeType,
-    format
-  });
+    const urls = Array.isArray(result?.job?.urls) ? result.job.urls : [];
+    if (!urls.length || typeof urls[0] !== "string") {
+      return json({success:false,error:"Canva export completed without a download URL",result},502);
+    }
+
+    stage = "download_export";
+    const source = await fetch(urls[0],{method:"GET"});
+    if (!source.ok || !source.body) {
+      return json({success:false,error:`Failed to download Canva export (${source.status})`},502);
+    }
+
+    const objectKey = `canva/${body.order_id}/${body.job_id}/${exportId}.${spec.ext}`;
+    const sourceMime = (source.headers.get("Content-Type") || "").split(";")[0].trim();
+    const mimeType = sourceMime || spec.mime;
+
+    stage = "r2_put";
+    await env.BUCKET.put(objectKey,source.body,{
+      httpMetadata:{contentType:mimeType},
+      customMetadata:{
+        source:"canva",
+        canva_export_id:String(exportId),
+        format
+      }
+    });
+
+    return json({
+      success:true,
+      stored:true,
+      export_job_id:String(exportId),
+      final_status:status,
+      bucket:"make-you-stop-deliverables",
+      r2_key:objectKey,
+      mime_type:mimeType,
+      format
+    });
+  } catch (error) {
+    const isPreview = new URL(request.url).hostname.startsWith("selling-flow-v1-");
+    return json({
+      success:false,
+      diagnostic_only:isPreview,
+      error:"Canva export store failed",
+      stage,
+      export_job_id:String(exportId || ""),
+      order_id:body?.order_id || null,
+      job_id:body?.job_id || null,
+      format:body?.format || null,
+      detail:error instanceof Error ? error.message : String(error)
+    }, isPreview ? 200 : 500);
+  }
 }
 
 export async function canvaExportStatus(request, env, exportId) {
